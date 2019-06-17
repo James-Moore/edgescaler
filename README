@@ -1,0 +1,64 @@
+Remote execution is controlled using the module: scale.anaxremote.
+
+Usage is available through the help flag for the top level program and all related commands.
+    python3 -m scale.anaxremote --help
+
+    Usage: anaxremote.py [OPTIONS] COMMAND [ARGS]...
+      Used to control the lifecycle of 1 or more Anax Docker Containers
+        Options:
+          -l, --locallog INTEGER   0=debug, 1=info, 2=produciton, 3=error, 4=critical
+                                   [default: 0]
+          -r, --remotelog INTEGER  0=debug, 1=info, 2=produciton, 3=error, 4=critical
+                                   [default: 0]
+          -c, --count INTEGER      Number of horizon containers  [default: 1]
+          -f, --file TEXT          File containing configuration json  [required]
+          --help                   Show this message and exit.
+
+        Commands:
+          agreements  Stops Anax Containers on all hosts (see count flag for >1...
+          register    Registers the Anax Containers on all hosts with hello world...
+          running     Lists the names of running anax containers
+          start       Starts Anax Containers on all hosts (see count flag for >1...
+          stop        Stops Anax Containers on all hosts (see count flag for >1...
+          unregister  Unregisters the Anax Containers on all hosts with hello world...
+
+The amount of information printed at runtime is configurable using local and remote logging flags.
+Two flags are provided because the enduser may want more information about what is occuring on their
+local master device or conversely they might be more interested in the operations occuring remotely
+on the slave devices.  Accordingly, the two flag values are provided for the user to set based on
+their needs.
+
+Local logging (master device) levels supported are 0-3.  Local logging levels set above level 2
+will provide no additional reduction of information.
+
+Remote logging (slave devices) levels supported are 0-1.  Remote logging levels set above level 1
+will provide no additional reduction of information.
+
+A configuration file is required for the master device (scale.anaxremote).  The configuration file contains
+all required (plus any additional) environment variables.  It also contains the hosts list.  The hosts list
+represents all the slave devices that will be controlled by the master.  The configuration file format
+description is as follows:
+
+Configuration File Definition:
+    {
+    "env": {
+        "HZN_EXCHANGE_URL": "https://stg.edge-fabric.com/v1",
+        "DOCKER_HUB_ID": "YOURHUBID",
+        "HZN_ORG_ID": "YOURORGID",
+        "EXCHANGE_USER": "iamapikey",
+        "EXCHANGE_PW": "YOURPD",
+        "HZN_EXCHANGE_USER_AUTH": "iamapikey:YOURPD",
+        "MYDOMAIN": "YOURDOMAIN",
+        "HZN_AIC": "/YOURPATH/anax-in-container/horizon-container (YOUR LOCATION TO AIC)"
+    },
+      "endpoints": ["YOURHOSTNAMELIST",]
+    }
+
+The count flag is provided to provide the number of anax container each slave should spawn.  The master
+informs the slave devices (hosts) that it should spawn "count" number of anax containers.  Currently,
+there is a limit for edge fabric nodes that should be addressed in the future.  The limit pertains to
+the number of docker networks across all containers/patterns existing on your slave.  The limit is 30
+docker networks.  So a deployment is at its limit if: 1 anax container with 1 pattern that has
+30 dependant services.  Likewise, 30 anax containers with 1 pattern that has 1 top level service is
+also using 30 docker networks.  In the future I hope the product is able to change the product to remove
+this issue.
