@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="2fc497de-d810-4434-a0e1-a91301d06b5f" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test.sh" beforeDir="false" afterPath="$PROJECT_DIR$/test.sh" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -15,7 +15,7 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/scale/anaxremote.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="255">
+            <state relative-caret-position="150">
               <caret line="17" column="14" selection-start-line="17" selection-start-column="14" selection-end-line="17" selection-end-column="14" />
               <folding>
                 <element signature="e#0#11#0" expanded="true" />
@@ -27,8 +27,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/scale/anaxscale.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="281">
-              <caret line="23" column="14" lean-forward="true" selection-start-line="23" selection-start-column="14" selection-end-line="23" selection-end-column="14" />
+            <state relative-caret-position="195">
+              <caret line="23" column="14" selection-start-line="23" selection-start-column="14" selection-end-line="23" selection-end-column="14" />
               <folding>
                 <element signature="e#0#17#0" expanded="true" />
               </folding>
@@ -39,8 +39,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/config.json">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="356">
-              <caret line="233" column="49" lean-forward="true" selection-start-line="233" selection-start-column="49" selection-end-line="233" selection-end-column="49" />
+            <state relative-caret-position="3495">
+              <caret line="233" column="49" selection-start-line="233" selection-start-column="49" selection-end-line="233" selection-end-column="49" />
             </state>
           </provider>
         </entry>
@@ -363,9 +363,9 @@
     </configuration>
     <list>
       <item itemvalue="Python.anaxscale" />
+      <item itemvalue="Python.test" />
       <item itemvalue="Python.axremote" />
       <item itemvalue="Python.configupdate" />
-      <item itemvalue="Python.test" />
       <item itemvalue="Python.validatehosts" />
     </list>
     <recent_temporary>
@@ -400,7 +400,8 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="278" y="41" width="1491" height="948" extended-state="0" />
+    <frame x="315" y="50" width="1491" height="948" extended-state="0" />
+    <editor active="true" />
     <layout>
       <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.16280654" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
@@ -485,23 +486,9 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/scale/axremote.py" />
-    <entry file="file://$PROJECT_DIR$/validaterunning.sh">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="225">
-          <caret line="15" column="33" lean-forward="true" selection-start-line="15" selection-start-column="33" selection-end-line="15" selection-end-column="33" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/commands.txt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="465">
-          <caret line="31" selection-start-line="31" selection-end-line="31" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/run.log">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
+    <entry file="file://$PROJECT_DIR$/validaterunning.sh" />
+    <entry file="file://$PROJECT_DIR$/commands.txt" />
+    <entry file="file://$PROJECT_DIR$/run.log" />
     <entry file="file://$PROJECT_DIR$/kickoff-parallel.sh">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="210">
@@ -542,49 +529,17 @@
     <entry file="file://$PROJECT_DIR$/uuid.log">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
-    <entry file="file://$PROJECT_DIR$/log/agreements_postregister.txt">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/log/agreements_postunregister.txt">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/log/register.log">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/log/running_poststart.log">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/log/running_poststop.log">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/log/start.log">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-1890" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/log/stop.log">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-17924" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/log/unregister.log">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-58934" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/scale/anaxscale.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="281">
-          <caret line="23" column="14" lean-forward="true" selection-start-line="23" selection-start-column="14" selection-end-line="23" selection-end-column="14" />
-          <folding>
-            <element signature="e#0#17#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/log/agreements_postregister.txt" />
+    <entry file="file://$PROJECT_DIR$/log/agreements_postunregister.txt" />
+    <entry file="file://$PROJECT_DIR$/log/register.log" />
+    <entry file="file://$PROJECT_DIR$/log/running_poststart.log" />
+    <entry file="file://$PROJECT_DIR$/log/running_poststop.log" />
+    <entry file="file://$PROJECT_DIR$/log/start.log" />
+    <entry file="file://$PROJECT_DIR$/log/stop.log" />
+    <entry file="file://$PROJECT_DIR$/log/unregister.log" />
     <entry file="file://$PROJECT_DIR$/scale/anaxremote.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="255">
+        <state relative-caret-position="150">
           <caret line="17" column="14" selection-start-line="17" selection-start-column="14" selection-end-line="17" selection-end-column="14" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
@@ -592,10 +547,20 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/kickoff-serial.sh">
+    <entry file="file://$PROJECT_DIR$/scale/anaxscale.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="270">
-          <caret line="18" column="101" selection-start-line="18" selection-start-column="101" selection-end-line="18" selection-end-column="101" />
+        <state relative-caret-position="195">
+          <caret line="23" column="14" selection-start-line="23" selection-start-column="14" selection-end-line="23" selection-end-column="14" />
+          <folding>
+            <element signature="e#0#17#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/config.json">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="3495">
+          <caret line="233" column="49" selection-start-line="233" selection-start-column="49" selection-end-line="233" selection-end-column="49" />
         </state>
       </provider>
     </entry>
@@ -606,10 +571,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/config.json">
+    <entry file="file://$PROJECT_DIR$/kickoff-serial.sh">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="356">
-          <caret line="233" column="49" lean-forward="true" selection-start-line="233" selection-start-column="49" selection-end-line="233" selection-end-column="49" />
+        <state relative-caret-position="270">
+          <caret line="18" column="101" selection-start-line="18" selection-start-column="101" selection-end-line="18" selection-end-column="101" />
         </state>
       </provider>
     </entry>
