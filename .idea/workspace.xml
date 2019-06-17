@@ -2,29 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="2fc497de-d810-4434-a0e1-a91301d06b5f" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/edgescaler.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/README" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/info.out" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kickoff-parallel.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kickoff-serial.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kickoff.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/log/placeholder" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scale/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scale/anaxremote.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scale/anaxscale.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test/asyncprocs.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test/logging.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tools/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tools/configuration.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tools/hosts.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/uuid.log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -165,10 +143,14 @@
   <component name="Git.Settings">
     <option name="PREVIOUS_COMMIT_AUTHORS">
       <list>
+        <option value="James Moore" />
         <option value="James J. Moore" />
       </list>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GithubDefaultAccount">
+    <option name="defaultAccountId" value="b9958211-99c8-4bec-a6b3-63efb185e46c" />
   </component>
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
@@ -212,8 +194,8 @@
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="278" />
-    <option name="y" value="41" />
+    <option name="x" value="315" />
+    <option name="y" value="50" />
     <option name="width" value="1491" />
     <option name="height" value="948" />
   </component>
@@ -379,22 +361,11 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration default="true" type="Tox" factoryName="Tox">
-      <module name="edgescaler" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <method v="2" />
-    </configuration>
     <list>
       <item itemvalue="Python.anaxscale" />
-      <item itemvalue="Python.test" />
       <item itemvalue="Python.axremote" />
       <item itemvalue="Python.configupdate" />
+      <item itemvalue="Python.test" />
       <item itemvalue="Python.validatehosts" />
     </list>
     <recent_temporary>
@@ -418,6 +389,14 @@
       <option name="presentableId" value="Default" />
       <updated>1559573005349</updated>
     </task>
+    <task id="LOCAL-00001" summary="Harness developed by James J Moore for scalability analysis of Open-Horizon.">
+      <created>1560790271698</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1560790271698</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="ToolWindowManager">
