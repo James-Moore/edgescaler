@@ -1,17 +1,18 @@
 import json
-from scale import anaxremote
+
+json_endpoints = 'endpoints'
 
 def main():
     f = open(file="/home/parallels/PycharmProjects/edgescaler/config.json")
     j = json.loads(f.read())
-    j[anaxremote.json_endpoints] = []
+    j[json_endpoints] = []
 
     for i in range(250):
         hostindex = str(i+1).zfill(2)
         hostname = "edge-scale-test"+hostindex+".rtp.raleigh.ibm.com"
-        j[anaxremote.json_endpoints].append(hostname)
+        j[json_endpoints].append(hostname)
 
-    print (j[anaxremote.json_endpoints])
+    print (j[json_endpoints])
 
     f.close()
     f = open(file="/home/parallels/PycharmProjects/edgescaler/config.json", mode="w")

@@ -14,17 +14,25 @@ env_scaler_dir = "HZN_SCALER_DIR"
 env_scaler_name = "HZN_SCALER_NAME"
 rflag = "remotelog"
 cflag = "count"
-sflag = "serial"
-serialDelay=.2
+
+
+mmflag = "mmode"
+smflag = "smode"
+mode_parallel = 0
+mode_pseudoserial = 1
+mode_serial = 2
+pseudoDelay=.5
 
 startOp = "start"
 stopOp = "stop"
 registerOp = "register"
 registerPattern="IBM/pattern-ibm.helloworld"
 unregisterOp = "unregister"
-runningOp = "running"
+queryRunningOp = "queryrunning"
+validateRunningOp = "validaterunning"
 agreementsOp = "agreements"
 nodesOp = "node list"
+pruneOp = "prune"
 
 
 @click.group()
@@ -89,15 +97,22 @@ def cli(ctx, configfile, count, remotelog, locallog):
     f = open(file=configfile)
     j = json.loads(f.read())
     ctx.obj = {
-        sflag: False, #default the master-slave relatioship to parallel execution
+        mmflag: mode_parallel, #default master execution mode
+        smflag: mode_parallel, #default slave execution mode
         json_endpoints: j[json_endpoints],
         json_env: j[json_env],
         rflag: lglvl_remote,
         cflag: count
     }
 
-def isSerial(ctx)->bool:
-    return ctx.obj[sflag]
+def isSerial(mode: int)->bool:
+    return mode == mode_serial
+
+def isPseudoSerial(mode: int)->bool:
+    return mode == mode_pseudoserial
+
+def isParallel(mode: int)->bool:
+    return mode == mode_parallel
 
 def generateSshLogin(host: str)->[str]:
     sshcmd = "ssh"
@@ -125,7 +140,7 @@ def generateAnaxScaleCommand(ctx, host: str, operation: str)->[]:
 
     operations = cdpart+scalerpart+logpart
 
-    if operation != runningOp:
+    if operation != queryRunningOp:
            operations = operations+countpart
 
     operations = operations + operation
@@ -147,10 +162,9 @@ def exportEnv(env: {}):
 #run the remote command asynchronously so all hosts perform their local parallel operations in parallel
 #meaning... parallelism is hostcount*processcount
 def remoteRun(ctx, commands: []):
-
     exportEnv(ctx.obj[json_env]) #export environment from json environment description
-
-    logger.info("Remote Operation...\n" + commands[0][2]+"\n")
+    runmode = ctx.obj[mmflag]
+    logger.info("Run Mode: "+str(runmode)+" Remote Operation...\n" + commands[0][2]+"\n")
     processes = {}
     #Kickoff all asynchronous processes
     for command in commands:
@@ -159,21 +173,16 @@ def remoteRun(ctx, commands: []):
         p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         processes.update({sshinfo: p})
 
-        #if the user has set the serial flag we should wait for the current host to complete execution
-        #before continuing to the next host.
-
-        if isSerial(ctx):
+        #User defined mode of operation
+        if isPseudoSerial(runmode):
             cval = ctx.obj[cflag]
-            dval = serialDelay
+            dval = pseudoDelay
             sval = dval*cval*2
             logger.debug(str(["Delay: "+str(dval), "Count: "+str(cval), "Sleeping: "+str(sval)]))
             time.sleep(sval)
-
-            #logger.debug("Waiting for process to complete before continuing...")
-            #p.wait()
-
-
-
+        elif isSerial(runmode):
+            logger.debug("Waiting for process to complete before continuing...")
+            p.wait()
 
     logger.debug("")
     logger.info("All Processes Scheduled...  Waiting for completion... Do not interupt..")
@@ -215,31 +224,25 @@ def start(ctx):
     kickoff(ctx, operation)
 
 @click.command()
-@click.option('--serial', '-s', is_flag=True, help="Change default parallel execution to serial.")
+@click.option('--mmode', '-m', envvar="HZN_SCLR_MASTER_MODE", type=int, default=0, show_default=True, help="Change master parallelism: 0=parallel, 1=pseudoparallel, 2=serial")
+@click.option('--smode', '-s', envvar="HZN_SCLR_SLAVE_MODE", type=int, default=0, show_default=True, help="Change slave parallelisms: 0=parallel, 1=pseudoparallel, 2=serial")
 @click.pass_context
-def register(ctx, serial):
+def register(ctx, mmode, smode):
     """Registers the Anax Containers on all hosts with hello world (see count flag)"""
-    ctx.obj[sflag]=serial
-
-    operation = registerOp
-    if serial:
-        operation=operation+" --"+sflag
-
-    operation = operation+" "+registerPattern
-
+    ctx.obj[mmflag]=mmode
+    ctx.obj[smflag] = smode
+    operation = registerOp+" --"+smflag+" "+str(smode)+" "+registerPattern
     kickoff(ctx, operation)
 
 @click.command()
-@click.option('--serial', '-s', is_flag=True, help="Change default parallel execution to serial.")
+@click.option('--mmode', '-m', envvar="HZN_SCLR_MASTER_MODE", type=int, default=0, show_default=True, help="Change parallelism: 0=parallel, 1=pseudoparallel, 2=serial")
+@click.option('--smode', '-s', envvar="HZN_SCLR_SLAVE_MODE", type=int, default=0, show_default=True, help="Change slave parallelisms: 0=parallel, 1=pseudoparallel, 2=serial")
 @click.pass_context
-def unregister(ctx, serial):
+def unregister(ctx, mmode, smode):
     """Unregisters the Anax Containers on all hosts with hello world (see count flag)"""
-    ctx.obj[sflag] = serial
-
-    operation = unregisterOp
-    if serial:
-        operation = operation + " --" + sflag
-
+    ctx.obj[mmflag] = mmode
+    ctx.obj[smflag] = smode
+    operation = unregisterOp + " --" + smflag + " " + str(smode)
     kickoff(ctx, operation)
 
 @click.command()
@@ -260,9 +263,9 @@ def agreements(ctx):
 @click.option('--list', '-l', is_flag=True, help="List anax containers on each host")
 @click.option('--count', '-c', is_flag=True, help="List anax container count on each host")
 @click.pass_context
-def running(ctx, list, count):
+def queryrunning(ctx, list, count):
     """Lists the names of running anax containers"""
-    operation = runningOp
+    operation = queryRunningOp
     if list:
         operation = operation+" --list"
     else:
@@ -270,12 +273,32 @@ def running(ctx, list, count):
 
     kickoff(ctx, operation)
 
+
+
+@click.command()
+@click.pass_context
+def validaterunning(ctx):
+    """Validates containers have transitioned to running"""
+    operation = validateRunningOp
+    kickoff(ctx, operation)
+
+@click.command()
+@click.pass_context
+def prune(ctx):
+    """Ensures there is a clean environment across all hosts for scale testing"""
+    operation = pruneOp
+    kickoff(ctx, operation)
+
+
+
 cli.add_command(start)
 cli.add_command(register)
 cli.add_command(unregister)
 cli.add_command(stop)
 cli.add_command(agreements)
-cli.add_command(running)
+cli.add_command(queryrunning)
+cli.add_command(validaterunning)
+cli.add_command(prune)
 
 if __name__ == '__main__':
     cli()
