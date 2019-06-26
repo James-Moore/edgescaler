@@ -27,7 +27,7 @@ if [ $NOTRUNNING -ne 0 ]; then
 fi
 
 #Perform registrations on all running containers
-python3 -m scale.anaxremote -f config.json -l 0 -r 0 -c $COUNT register -m 2 -s 0 |& tee log/register.log
+python3 -m scale.anaxremote -f config.json -l 0 -r 0 -c $COUNT register -m 0 -s 2 |& tee log/register.log
 
 #Wait for agreements to be established
 while [ $(python3 -m scale.anaxremote -f config.json -l 2 -r 1 -c $COUNT agreements |& grep False | wc -l) -ne 0 ]; do echo "Waiting for agreements to be established.  Will sleep for 30 seconds and check again"; sleep 30; done
@@ -39,7 +39,7 @@ python3 -m scale.anaxremote -f config.json -l 0 -r 0 -c $COUNT agreements |& tee
 python3 -m scale.anaxremote -f config.json -l 0 -r 0 -c $COUNT eventlog |& tee log/eventlogs.log
 
 #Unregister all agents
-python3 -m scale.anaxremote -f config.json -l 0 -r 0 -c $COUNT unregister -m 1 -s 0 |& tee log/unregister.log
+python3 -m scale.anaxremote -f config.json -l 0 -r 0 -c $COUNT unregister -m 0 -s 0 |& tee log/unregister.log
 
 #keep checking until all agreements have been destroyed
 while [ $(python3 -m scale.anaxremote -f config.json -l 2 -r 1 -c $COUNT agreements |& grep True | wc -l) -ne 0 ]; do echo "Waiting for agreements to be destroyed.  Will sleep for ten seconds and check again"; sleep 10; done

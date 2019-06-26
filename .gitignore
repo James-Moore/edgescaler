@@ -1,2 +1,4 @@
-config.json*
+scale/artifacts/
+ignore/
+test/
 venv/

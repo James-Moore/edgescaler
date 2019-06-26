@@ -1,4 +1,5 @@
 import time
+import datetime
 import click
 import os
 import json
@@ -21,19 +22,36 @@ smflag = "smode"
 mode_parallel = 0
 mode_pseudoserial = 1
 mode_serial = 2
-pseudoDelay=.5
+pseudoDelay=1
 
 startOp = "start"
 stopOp = "stop"
 registerOp = "register"
 registerPattern="IBM/pattern-ibm.helloworld"
 unregisterOp = "unregister"
+eventlogOp = "eventlog"
 queryRunningOp = "queryrunning"
 validateRunningOp = "validaterunning"
 agreementsOp = "agreements"
 nodesOp = "node list"
 pruneOp = "prune"
 
+
+
+def timestamp()->str:
+    return "["+str(datetime.datetime.now()).split('.')[0]+"]\t"
+
+def debug(out: str):
+    logger.debug(timestamp()+out)
+
+def info(out: str):
+    logger.info(timestamp()+out)
+
+def warning(out: str):
+    logger.warning(timestamp()+out)
+
+def error(out: str):
+    logger.error(timestamp()+out)
 
 @click.group()
 @click.option('--locallog', '-l', type=int, default=0, show_default=True, help="0=debug, 1=info, 2=produciton, 3=error, 4=critical")
@@ -164,11 +182,11 @@ def exportEnv(env: {}):
 def remoteRun(ctx, commands: []):
     exportEnv(ctx.obj[json_env]) #export environment from json environment description
     runmode = ctx.obj[mmflag]
-    logger.info("Run Mode: "+str(runmode)+" Remote Operation...\n" + commands[0][2]+"\n")
+    info("Run Mode: "+str(runmode)+" Remote Operation...\n" + commands[0][2]+"\n")
     processes = {}
     #Kickoff all asynchronous processes
     for command in commands:
-        logger.debug("Calling remote operation on: " + command[0]+" "+command[1])
+        debug("Calling remote operation on: " + command[0]+" "+command[1])
         sshinfo = command[1] #this is the user@hostname portion of the ssh command
         p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         processes.update({sshinfo: p})
@@ -178,20 +196,20 @@ def remoteRun(ctx, commands: []):
             cval = ctx.obj[cflag]
             dval = pseudoDelay
             sval = dval*cval*2
-            logger.debug(str(["Delay: "+str(dval), "Count: "+str(cval), "Sleeping: "+str(sval)]))
+            debug(str(["Delay: "+str(dval), "Count: "+str(cval), "Sleeping: "+str(sval)]))
             time.sleep(sval)
         elif isSerial(runmode):
-            logger.debug("Waiting for process to complete before continuing...")
+            debug("Waiting for process to complete before continuing...")
             p.wait()
 
     logger.debug("")
-    logger.info("All Processes Scheduled...  Waiting for completion... Do not interupt..")
+    info("All Processes Scheduled...  Waiting for completion... Do not interupt..")
 
     #Wait for all background processes
     for command in commands:
         sshinfo = command[1] #this is the user@hostname portion of the ssh command
         process = processes[sshinfo]
-        logger.debug("Waiting for "+sshinfo+" with process "+str(process.pid))
+        debug("Waiting for "+sshinfo+" with process "+str(process.pid))
 
         #aquire remote command's output
         outs = str()
@@ -202,14 +220,10 @@ def remoteRun(ctx, commands: []):
             process.kill()
             errs, outs = process.communicate()
 
-        #print output according to local log level
-        if(logger.getEffectiveLevel() >= logging.WARNING):
-            logger.warning(str(outs).rstrip()+str(errs))
-        else:
-            logger.info("Connect: "+sshinfo+"\nSTDOUT: "+str(outs)+"STDERR: "+str(errs))
+        warning(str(outs).rstrip()+str(errs))
 
     # inform user of completion
-    logger.info("All Processes Completed.")
+    info("All Processes Completed.")
 
 
 def kickoff(ctx, operation: str):
@@ -244,6 +258,19 @@ def unregister(ctx, mmode, smode):
     ctx.obj[smflag] = smode
     operation = unregisterOp + " --" + smflag + " " + str(smode)
     kickoff(ctx, operation)
+
+
+@click.command()
+@click.option('--mmode', '-m', envvar="HZN_SCLR_MASTER_MODE", type=int, default=0, show_default=True, help="Change parallelism: 0=parallel, 1=pseudoparallel, 2=serial")
+@click.option('--smode', '-s', envvar="HZN_SCLR_SLAVE_MODE", type=int, default=0, show_default=True, help="Change slave parallelisms: 0=parallel, 1=pseudoparallel, 2=serial")
+@click.pass_context
+def eventlog(ctx, mmode, smode):
+    """Unregisters the Anax Containers on all hosts with hello world (see count flag)"""
+    ctx.obj[mmflag] = mmode
+    ctx.obj[smflag] = smode
+    operation = eventlogOp + " --" + smflag + " " + str(smode)
+    kickoff(ctx, operation)
+
 
 @click.command()
 @click.pass_context
@@ -294,6 +321,7 @@ def prune(ctx):
 cli.add_command(start)
 cli.add_command(register)
 cli.add_command(unregister)
+cli.add_command(eventlog)
 cli.add_command(stop)
 cli.add_command(agreements)
 cli.add_command(queryrunning)

@@ -1,3 +1,5 @@
+import os
+import sys
 import time
 import json
 import logging
@@ -17,6 +19,8 @@ dstflag="destination"
 vcmd = "hostname"
 json_env = 'env'
 json_endpoints = 'endpoints'
+syslogs_capturedir="syslogs"
+syslog = "/var/log/syslog"
 
 
 
@@ -58,11 +62,24 @@ def generateCmds(hostnames: [str], cmd: str)->[str]:
 def generateValidationCmds(hostnames: [str])->[str]:
     return generateCmds(hostnames, vcmd)
 
-def generageScpCmds(source: str, destination: str, hostnames: [str]):
+def generateSendCmds(source: str, destination: str, hostnames: [str]):
     result = []
     for hostname in hostnames:
         command = ["scp", "-r", source, "root@"+hostname+":"+destination]
         result.append(command)
+    return result
+
+def generateReceiveSyslogCmds(hostnames: [str], logdir: str):
+    p = os.path.join(logdir, syslogs_capturedir)
+    os.makedirs(p, exist_ok=True)
+
+    result = []
+    for hostname in hostnames:
+        hsyslog = os.path.join(p, hostname + "_syslog.log")
+        command = ["scp", "-r", "root@"+hostname+":"+syslog, hsyslog]
+        result.append(command)
+
+    pprint(result)
     return result
 
 
@@ -92,7 +109,7 @@ def run(ctx, commands: [str]):
         outs = str()
         errs = str()
         try:
-            errs, outs = process.communicate(timeout=2)
+            errs, outs = process.communicate(timeout=200)
         except TimeoutExpired:
             process.kill()
             errs, outs = process.communicate()
@@ -156,16 +173,41 @@ def validateConfig(ctx, configfile):
 @click.option('--destination', '-d', type=str, required=True, help="Destination file/directory to recieve transfer")
 @click.option('--configfile', '-f', type=str, required=True, help="File containing configuration json")
 @click.pass_context
-def scp(ctx, source, destination, configfile):
-    """Starts Anax Containers on all hosts (see count flag for >1 container)"""
+def scpsend(ctx, source, destination, configfile):
+    """Sends source file to the corresponding destination on each config file host)"""
     loadConfig(ctx, configfile)
-    cmds = generageScpCmds(source, destination, ctx.obj[json_endpoints])
+    cmds = generateSendCmds(source, destination, ctx.obj[json_endpoints])
     run(ctx, cmds)
 
 
+
+@click.command()
+@click.option('--configfile', '-f', type=str, required=True, help="File containing configuration json")
+@click.option('--logdir', '-o', type=str, required=True, help="Directory to place syslogs")
+@click.pass_context
+def recieveSyslogs(ctx, configfile, logdir):
+    """Recieves source file from the corresponding hosts and writes to destination)"""
+    loadConfig(ctx, configfile)
+    cmds = generateReceiveSyslogCmds(ctx.obj[json_endpoints], logdir )
+    run(ctx, cmds)
+
+
+
+@click.command()
+@click.option('--configfile', '-f', type=str, required=True, help="File containing configuration json")
+@click.argument('command')
+@click.pass_context
+def pushcommand(ctx, configfile, command):
+    """Validates containers have transitioned to running"""
+    loadConfig(ctx, configfile)
+    cmds = generateCmds(ctx.obj[json_endpoints], command)
+    run(ctx, cmds)
+
+cli.add_command(pushcommand)
 cli.add_command(validateHosts)
 cli.add_command(validateConfig)
-cli.add_command(scp)
+cli.add_command(scpsend)
+cli.add_command(recieveSyslogs)
 
 if __name__ == '__main__':
     cli()
