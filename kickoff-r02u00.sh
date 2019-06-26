@@ -60,7 +60,8 @@ runtime=$((runend-runstart))
 echo "$runtime" > "$runtimelog"
 
 #Redact your cloud token
-find ./log/ -type f -exec sed -i 's/YOUR_USER_PW/PW_REDACTED/g' {} \;
+find ./log/ -type f -exec sed -i 's/YOURPW/PW_REDACTED/g' {} \;
 
 #Package the run results
 tar -zcvf edgescale-log-$(date +%Y%m%d_%H%M%S).tar.gz log
+#mv edgescale-log-*.tar.gz /home/parallels/scalereports

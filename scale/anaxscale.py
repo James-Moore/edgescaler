@@ -13,32 +13,23 @@ import datetime
 
 
 logger = logging.getLogger(__name__)
-
 docker_socket="docker.socket"
 docker_service="docker.service"
-
 cflag = 'count'
 aflag = 'anax'
 oflag = 'organization'
-
 smflag = "smode"
 mode_parallel = 0
 mode_pseudoserial = 1
 mode_serial = 2
 pseudoDelay=1
-
 hznprefix = 'horizon'
 hzncmd = 'hzn'
 baseport = 8080
 hostname = socket.gethostname()
-
 uuidlog = open("uuid.log","a+")
 
 
-def generateHorizonURL(index: int)->str:
-    port = baseport + index
-    HORIZON_URL = "http://localhost:" + str(port)
-    return HORIZON_URL
 
 def timestamp()->str:
     return "["+str(datetime.datetime.now()).split('.')[0]+"]\t"
@@ -64,8 +55,11 @@ def isPseudoSerial(mode: int)->bool:
 def isParallel(mode: int)->bool:
     return mode == mode_parallel
 
-#save all the nodes created by this script because I have no idea what happens to them on the exchange
-#do they persist forever???
+def generateHorizonURL(index: int)->str:
+    port = baseport + index
+    HORIZON_URL = "http://localhost:" + str(port)
+    return HORIZON_URL
+
 def generateUniqueNodeAuth():
     unique = generateUniqueNodeName()+":"+generageUniqueNodeToken()
     print(unique, file=uuidlog)
@@ -81,7 +75,6 @@ def generateNodeAuth(index: int):
     unique = hostname+"_"+hznprefix+str(index)+":"+"repeatabletoken"
     print(unique, file=uuidlog)
     return unique
-
 
 #returns the list built from a command, its arguments, and a count
 def buildCallList(cmd: str, args: [str], container: int)->[]:
@@ -133,7 +126,6 @@ def getRunningContainerList(count: int)->[int]:
     #return list of running containers
     return containers2stop
 
-
 #get the names of all running anax containers
 def getRunningAnaxContainerNames()->[str]:
     client = docker.from_env()
@@ -155,10 +147,8 @@ def getContainersList(count: int)->[]:
         containers.append(i+1)
     return containers
 
-
 def isAnaxRunning(index: int)->bool:
     return hznprefix+str(index) in getRunningAnaxContainerNames()
-
 
 #executes a single command against an individual container rathern than a command for each container
 def singleHznCommand(cmd: str, argList: [str], index: int)->str:
@@ -289,8 +279,11 @@ def executeHZN(ctx, hznattrLists: [], containers: [int], print: bool)->bool:
 @click.option('--organization', '-o', envvar="HZN_ORG_ID", required=True, help="Must set HZN_ORG_ID or pass flag")
 @click.pass_context
 def cli(ctx, organization, anax, count, log):
-    """Used to control the lifecycle of 1 or more Anax Docker Containers"""
-    # create logger
+    """Used to control the Anax Docker Containers on this host.  All commands consume the count flag unless specified.
+    To see which commands consume the count flag issue --help on the individual command.  The count flag replicates a
+     given operation across containers 1..COUNT."""
+
+    # create logging
     global logger
     lglvl = logging.INFO
 
@@ -317,7 +310,7 @@ def cli(ctx, organization, anax, count, log):
     # add formatter to ch
     #ch.setFormatter(formatter)
 
-    # add ch to logger
+    # add ch to logging
     logger.addHandler(ch)
 
     ctx.obj = {
@@ -333,7 +326,7 @@ def cli(ctx, organization, anax, count, log):
 @click.argument('pattern')
 @click.pass_context
 def register(ctx, smode, pattern):
-    """Registers the Anax Containers with hello world (see count flag)"""
+    """Registers the Anax Containers with hello world on this host"""
     ctx.obj[smflag] = smode
     count = ctx.obj[cflag]
     org = ctx.obj[oflag]
@@ -342,11 +335,12 @@ def register(ctx, smode, pattern):
     result = executeHZN(ctx, hznattrLists, containers, False)
     logger.info(result)
 
+
 @click.command()
 @click.option('--smode', '-s', envvar="HZN_SCLR_SLAVE_MODE", type=int, default=0, show_default=True, help="Change slave parallelisms: 0=parallel, 1=pseudoparallel, 2=serial")
 @click.pass_context
 def unregister(ctx, smode):
-    """Registers the Anax Containers with hello world (see count flag)"""
+    """Unregisters the Anax Containers on this host"""
     ctx.obj[smflag] = smode
     count = ctx.obj[cflag]
     containers = getRunningContainerList(count)
@@ -354,11 +348,12 @@ def unregister(ctx, smode):
     result = executeHZN(ctx, hznattrLists, containers, False)
     logger.info(result)
 
+
 @click.command()
 @click.option('--smode', '-s', envvar="HZN_SCLR_SLAVE_MODE", type=int, default=0, show_default=True, help="Change slave parallelisms: 0=parallel, 1=pseudoparallel, 2=serial")
 @click.pass_context
 def eventlog(ctx, smode):
-    """Registers the Anax Containers with hello world (see count flag)"""
+    """Collects the eventlogs for each container on this host"""
     ctx.obj[smflag] = smode
     count = ctx.obj[cflag]
     containers = getRunningContainerList(count)
@@ -366,40 +361,44 @@ def eventlog(ctx, smode):
     result = executeHZN(ctx, hznattrLists, containers, True)
     logger.info(result)
 
+
 @click.command()
 @click.pass_context
 def start(ctx):
-    """Starts Anax Containers (see count flag for >1 container)"""
+    """Starts Anax Containers on this host"""
     count = ctx.obj[cflag]
     containers = getContainersList(count)
     debug("Starting: " + str(containers))
     result = executeAnaxInContainer(ctx, ["start"], containers)
     logger.info(result)
 
+
 @click.command()
 @click.pass_context
 def stop(ctx):
-    """Stops Anax Containers (see count flag for >1 container)"""
+    """Stops Anax Containers on this host"""
     count = ctx.obj[cflag]
     containers = getRunningContainerList(count)
     debug("Stopping: "+str(containers))
     result = executeAnaxInContainer(ctx, ["stop"], containers)
     logger.info(result)
 
+
 @click.command()
 @click.pass_context
 def restart(ctx):
-    """Restarts Docker Containers (see count flag for >1 container)"""
+    """Restarts Anax Containers on this host"""
     count = ctx.obj[cflag]
     containers = getRunningContainerList(count)
     debug("Stopping: " + str(containers))
     result = executeAnaxInContainer(ctx, ["restart"], containers)
     logger.info(result)
 
+
 @click.command()
 @click.pass_context
 def agreements(ctx):
-    """Returns True if agreements for containers 1..Count are validated. Uses count flag."""
+    """Returns True if all agreements on this host are validated."""
     count = ctx.obj[cflag]
     callList = ['agreement', 'list']
 
@@ -432,15 +431,16 @@ def agreementWorker(index: int)->bool:
 @click.command()
 @click.argument('anax_container_number',default=1)
 def agreement(anax_container_number):
-    """Returns True if an agreement has been established and is running; otherwise returns False"""
+    """Returns True if an agreement has been established and is running; otherwise returns False. Note: Does not consume count flag.  Must pass container number as argument.  """
     result = agreementWorker(anax_container_number)
     logger.info(result)
     return result
 
+
 @click.command()
 @click.argument('anax_container_number',default=1)
 def node(anax_container_number):
-    """Returns True if node has been registered; otherwise returns False"""
+    """Returns True if node has been configured; otherwise returns False. Note: Does not consume count flag.  Must pass container number as argument.  """
     result = False
     callList = ['node', 'list', "-v"]
 
@@ -456,7 +456,6 @@ def node(anax_container_number):
         pass
 
     logger.info(result)
-
 
 def runprocess(runlist: [str]) -> int:
     p = subprocess.Popen(runlist, stdout=subprocess.PIPE)
@@ -488,7 +487,6 @@ def serviceisactive(service: str) -> bool:
     rc = runprocess(runlist)
     return (rc == 0)
 
-
 @click.command()
 @click.pass_context
 def prune(ctx):
@@ -496,7 +494,7 @@ def prune(ctx):
     client = docker.from_env()
 
     try:
-        debug("Unregistering all agents that may be running and registered...")
+        debug("Unregisters all agents.  Stops all containers, Prunes all docker elements, Restarts docker.socket and docker.service")
         ctx.obj[cflag]=len(client.containers.list())
         unregister(ctx)
     except:
@@ -546,16 +544,17 @@ def prune(ctx):
 @click.option('--count', '-c', is_flag=True, help="Return the running anax container count")
 @click.pass_context
 def queryrunning(ctx, list, count):
-    """Lists the names of running anax containers"""
+    """Lists the names of running anax containers.  Note: Does not consume count flag"""
     if list:
         logger.info(str(getRunningAnaxContainerNames()))
     else:
         logger.info(str(len(getRunningAnaxContainerNames())))
 
+
 @click.command()
 @click.pass_context
 def validaterunning(ctx):
-    """Validates containers have transitioned to running"""
+    """Validates containers have transitioned to running.  Note: Does not consume count flag."""
     client = docker.from_env()
     #for container in client.containers.list(filters={"name": "horizon"}):
     for container in client.containers.list(all=True, filters={"name": "horizon"}):
@@ -578,9 +577,6 @@ def validaterunning(ctx):
             debug(str(status))
         else:
             logger.info(running)
-
-
-
 
 cli.add_command(eventlog)
 cli.add_command(validaterunning)

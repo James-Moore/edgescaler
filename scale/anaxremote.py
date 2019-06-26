@@ -6,7 +6,6 @@ import json
 import logging
 import subprocess
 from subprocess import TimeoutExpired
-from pprint import pprint
 
 logger = logging.getLogger(__name__)
 json_env = 'env'
@@ -15,7 +14,6 @@ env_scaler_dir = "HZN_SCALER_DIR"
 env_scaler_name = "HZN_SCALER_NAME"
 rflag = "remotelog"
 cflag = "count"
-
 
 mmflag = "mmode"
 smflag = "smode"
@@ -52,76 +50,6 @@ def warning(out: str):
 
 def error(out: str):
     logger.error(timestamp()+out)
-
-@click.group()
-@click.option('--locallog', '-l', type=int, default=0, show_default=True, help="0=debug, 1=info, 2=produciton, 3=error, 4=critical")
-@click.option('--remotelog', '-r', type=int, default=0, show_default=True, help="0=debug, 1=info, 2=produciton, 3=error, 4=critical")
-@click.option('--count', '-c', type=int, default=1, show_default=True, help="Number of horizon containers")
-@click.option('--configfile', '-f', type=str, required=True, help="File containing configuration json")
-@click.pass_context
-def cli(ctx, configfile, count, remotelog, locallog):
-    """Used to control the lifecycle of 1 or more Anax Docker Containers"""
-    # create logger
-    global logger
-    lglvl_local = logging.INFO
-    if locallog == 0:
-        lglvl_local = logging.DEBUG
-    elif locallog == 1:
-        lglvl_local = logging.INFO
-    elif locallog >= 2:
-        lglvl_local = logging.WARNING
-
-    #Only log levels used are 0-2 so comment out the rest
-    #elif locallog == 3:
-    #    lglvl_local = logging.ERROR
-    #elif locallog == 4:
-    #    lglvl_local = logging.CRITICAL
-
-    logger.setLevel(lglvl_local)
-
-    # create console handler and set level to debug
-    ch = logging.StreamHandler()
-    ch.setLevel(lglvl_local)
-
-    # create formatter
-    # formatter = logging.Formatter('%(message)s')
-
-    # add formatter to ch
-    # ch.setFormatter(formatter)
-
-    # add ch to logger
-    logger.addHandler(ch)
-
-    #Loads JSON Configuration File
-    # {
-    # "env": {
-    #     "HZN_EXCHANGE_URL": "https://stg.edge-fabric.com/v1",
-    #     "DOCKER_HUB_ID": "YOURHUBID",
-    #     "HZN_ORG_ID": "YOURORGID",
-    #     "EXCHANGE_USER": "iamapikey",
-    #     "EXCHANGE_PW": "YOURPD",
-    #     "HZN_EXCHANGE_USER_AUTH": "iamapikey:YOURPD",
-    #     "MYDOMAIN": "YOURDOMAIN",
-    #     "HZN_AIC": "/root/anax-in-container/horizon-container (YOUR LOCATION TO AIC)"
-    #   },
-    #   "endpoints": ["YOURHOSTNAMELIST",]
-    # }
-
-    #check for log level out of accepted range.  Slave logging is only 0 or 1.
-    lglvl_remote=1
-    if remotelog == 0:
-        lglvl_remote = 0
-
-    f = open(file=configfile)
-    j = json.loads(f.read())
-    ctx.obj = {
-        mmflag: mode_parallel, #default master execution mode
-        smflag: mode_parallel, #default slave execution mode
-        json_endpoints: j[json_endpoints],
-        json_env: j[json_env],
-        rflag: lglvl_remote,
-        cflag: count
-    }
 
 def isSerial(mode: int)->bool:
     return mode == mode_serial
@@ -225,35 +153,111 @@ def remoteRun(ctx, commands: []):
     # inform user of completion
     info("All Processes Completed.")
 
-
 def kickoff(ctx, operation: str):
     commands = generateAnaxScaleCommands(ctx, operation)
     remoteRun(ctx, commands)
 
+
+@click.group()
+@click.option('--locallog', '-l', type=int, default=0, show_default=True, help="0=debug, 1=info, 2=produciton, 3=error, 4=critical")
+@click.option('--remotelog', '-r', type=int, default=0, show_default=True, help="0=debug, 1=info, 2=produciton, 3=error, 4=critical")
+@click.option('--count', '-c', type=int, default=1, show_default=True, help="Number of horizon containers")
+@click.option('--configfile', '-f', type=str, required=True, help="File containing configuration json")
+@click.pass_context
+def cli(ctx, configfile, count, remotelog, locallog):
+    """The EdgeScaler product is a Master-Slave distributed scale analysis platform.  It controls remote execution using
+using the scale.anaxremote python module.  The scale.anaxremote master application performs non-interactive ssh
+execution of the scale.anaxscale python module on slave nodes.  The scale.anaxscale slave application executes 0..*
+hzn, horizon-container, and docker operations."""
+    # create logging
+    global logger
+    lglvl_local = logging.INFO
+    if locallog == 0:
+        lglvl_local = logging.DEBUG
+    elif locallog == 1:
+        lglvl_local = logging.INFO
+    elif locallog >= 2:
+        lglvl_local = logging.WARNING
+
+    #Only log levels used are 0-2 so comment out the rest
+    #elif locallog == 3:
+    #    lglvl_local = logging.ERROR
+    #elif locallog == 4:
+    #    lglvl_local = logging.CRITICAL
+
+    logger.setLevel(lglvl_local)
+
+    # create console handler and set level to debug
+    ch = logging.StreamHandler()
+    ch.setLevel(lglvl_local)
+
+    # create formatter
+    # formatter = logging.Formatter('%(message)s')
+
+    # add formatter to ch
+    # ch.setFormatter(formatter)
+
+    # add ch to logging
+    logger.addHandler(ch)
+
+    #Loads JSON Configuration File
+    # {
+    # "env": {
+    #     "HZN_EXCHANGE_URL": "https://stg.edge-fabric.com/v1",
+    #     "DOCKER_HUB_ID": "YOURHUBID",
+    #     "HZN_ORG_ID": "YOURORGID",
+    #     "EXCHANGE_USER": "iamapikey",
+    #     "EXCHANGE_PW": "YOURPD",
+    #     "HZN_EXCHANGE_USER_AUTH": "iamapikey:YOURPD",
+    #     "MYDOMAIN": "YOURDOMAIN",
+    #     "HZN_AIC": "/root/anax-in-container/horizon-container (YOUR LOCATION TO AIC)"
+    #   },
+    #   "endpoints": ["YOURHOSTNAMELIST",]
+    # }
+
+    #check for log level out of accepted range.  Slave logging is only 0 or 1.
+    lglvl_remote=1
+    if remotelog == 0:
+        lglvl_remote = 0
+
+    f = open(file=configfile)
+    j = json.loads(f.read())
+    ctx.obj = {
+        mmflag: mode_parallel, #default master execution mode
+        smflag: mode_parallel, #default slave execution mode
+        json_endpoints: j[json_endpoints],
+        json_env: j[json_env],
+        rflag: lglvl_remote,
+        cflag: count
+    }
+
+
 @click.command()
 @click.pass_context
 def start(ctx):
-    """Starts Anax Containers on all hosts (see count flag for >1 container)"""
+    """Starts Anax Containers on all hosts"""
     operation = startOp
     kickoff(ctx, operation)
+
 
 @click.command()
 @click.option('--mmode', '-m', envvar="HZN_SCLR_MASTER_MODE", type=int, default=0, show_default=True, help="Change master parallelism: 0=parallel, 1=pseudoparallel, 2=serial")
 @click.option('--smode', '-s', envvar="HZN_SCLR_SLAVE_MODE", type=int, default=0, show_default=True, help="Change slave parallelisms: 0=parallel, 1=pseudoparallel, 2=serial")
 @click.pass_context
 def register(ctx, mmode, smode):
-    """Registers the Anax Containers on all hosts with hello world (see count flag)"""
+    """Registers Anax Containers on all hosts with hello world"""
     ctx.obj[mmflag]=mmode
     ctx.obj[smflag] = smode
     operation = registerOp+" --"+smflag+" "+str(smode)+" "+registerPattern
     kickoff(ctx, operation)
+
 
 @click.command()
 @click.option('--mmode', '-m', envvar="HZN_SCLR_MASTER_MODE", type=int, default=0, show_default=True, help="Change parallelism: 0=parallel, 1=pseudoparallel, 2=serial")
 @click.option('--smode', '-s', envvar="HZN_SCLR_SLAVE_MODE", type=int, default=0, show_default=True, help="Change slave parallelisms: 0=parallel, 1=pseudoparallel, 2=serial")
 @click.pass_context
 def unregister(ctx, mmode, smode):
-    """Unregisters the Anax Containers on all hosts with hello world (see count flag)"""
+    """Unregisters the Anax Containers on all hosts"""
     ctx.obj[mmflag] = mmode
     ctx.obj[smflag] = smode
     operation = unregisterOp + " --" + smflag + " " + str(smode)
@@ -265,7 +269,7 @@ def unregister(ctx, mmode, smode):
 @click.option('--smode', '-s', envvar="HZN_SCLR_SLAVE_MODE", type=int, default=0, show_default=True, help="Change slave parallelisms: 0=parallel, 1=pseudoparallel, 2=serial")
 @click.pass_context
 def eventlog(ctx, mmode, smode):
-    """Unregisters the Anax Containers on all hosts with hello world (see count flag)"""
+    """Collect eventlogs for all containers on all hosts"""
     ctx.obj[mmflag] = mmode
     ctx.obj[smflag] = smode
     operation = eventlogOp + " --" + smflag + " " + str(smode)
@@ -275,23 +279,25 @@ def eventlog(ctx, mmode, smode):
 @click.command()
 @click.pass_context
 def stop(ctx):
-    """Stops Anax Containers on all hosts (see count flag for >1 container)"""
+    """Stops Anax Containers on all hosts"""
     operation = stopOp
     kickoff(ctx, operation)
+
 
 @click.command()
 @click.pass_context
 def agreements(ctx):
-    """Stops Anax Containers on all hosts (see count flag for >1 container)"""
+    """Collects agreement information for all containers on all hosts"""
     operation = agreementsOp
     kickoff(ctx, operation)
+
 
 @click.command()
 @click.option('--list', '-l', is_flag=True, help="List anax containers on each host")
 @click.option('--count', '-c', is_flag=True, help="List anax container count on each host")
 @click.pass_context
 def queryrunning(ctx, list, count):
-    """Lists the names of running anax containers"""
+    """Lists the anax containers deployed on each hosts"""
     operation = queryRunningOp
     if list:
         operation = operation+" --list"
@@ -301,13 +307,13 @@ def queryrunning(ctx, list, count):
     kickoff(ctx, operation)
 
 
-
 @click.command()
 @click.pass_context
 def validaterunning(ctx):
-    """Validates containers have transitioned to running"""
+    """Validates if docker containers are in the running state"""
     operation = validateRunningOp
     kickoff(ctx, operation)
+
 
 @click.command()
 @click.pass_context
@@ -327,6 +333,8 @@ cli.add_command(agreements)
 cli.add_command(queryrunning)
 cli.add_command(validaterunning)
 cli.add_command(prune)
+
+
 
 if __name__ == '__main__':
     cli()
