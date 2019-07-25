@@ -1,5 +1,4 @@
 import os
-import sys
 import time
 import json
 import logging
@@ -13,17 +12,20 @@ logger = logging.getLogger(__name__)
 pflag="prefix"
 dflag="domain"
 cflag="count"
-sflag = "serial"
+mflag="mode"
 srcflag="source"
 dstflag="destination"
+tflag="timeout"
 vcmd = "hostname"
 json_env = 'env'
 json_endpoints = 'endpoints'
 syslogs_capturedir="syslogs"
 syslog = "/var/log/syslog"
-
-
-
+cnstCommand = "command"
+cnstReturncode = "returncode"
+cnstStdout = "stdout"
+cnstStderr = "stderr"
+pseudoDelay = .5
 
 def setupLogging(loglevel: int):
     """Used to control the lifecycle of 1 or more Anax Docker Containers"""
@@ -41,9 +43,6 @@ def setupLogging(loglevel: int):
     ch.setLevel(lglvl_local)
     logger.addHandler(ch)
 
-def isSerial(ctx)->bool:
-    return ctx.obj[sflag]
-
 def generateHostnames(ctx)->[str]:
     list=[]
     for i in range(ctx.obj[cflag]):
@@ -51,21 +50,30 @@ def generateHostnames(ctx)->[str]:
         list.append(hostname)
     return list
 
-def generateCmds(hostnames: [str], cmd: str)->[str]:
+def generateCmds(ctx, cmd: str)->[str]:
+    hostnames = ctx.obj[json_endpoints]
+    env = ctx.obj[json_env]
     result = []
     for hostname in hostnames:
-        sshcmd = anaxremote.generateSshLogin(hostname)
-        valcmd = sshcmd+[cmd]
-        result.append(valcmd)
+        sshcmd = anaxremote.generateSshCommand(hostname, cmd, env)
+        result.append(sshcmd)
     return result
 
-def generateValidationCmds(hostnames: [str])->[str]:
-    return generateCmds(hostnames, vcmd)
-
-def generateSendCmds(source: str, destination: str, hostnames: [str]):
+def generateSendCmds(ctx, source: str, destination: str):
+    hostnames = ctx.obj[json_endpoints]
     result = []
     for hostname in hostnames:
         command = ["scp", "-r", source, "root@"+hostname+":"+destination]
+        result.append(command)
+    return result
+
+def generateReceiveCmds(ctx, source: str, destination: str):
+    hostnames = ctx.obj[json_endpoints]
+    result = []
+    for hostname in hostnames:
+        hostnameDestination = os.path.join(destination, hostname)
+        os.makedirs(hostnameDestination, exist_ok=True)
+        command = ["scp", "-r", "root@" + hostname + ":" + source, hostnameDestination]
         result.append(command)
     return result
 
@@ -83,22 +91,29 @@ def generateReceiveSyslogCmds(hostnames: [str], logdir: str):
     return result
 
 
-def run(ctx, commands: [str]):
-    logger.debug("Scheduling all commands...")
+def run(ctx, commands: [str]) -> [int]:
+    runmode = ctx.obj[mflag]
+    logger.info("Scheduling all commands...")
+    logger.info("Run Mode: " + str(runmode))
+
     processes = {}
     #Kickoff all asynchronous processes
     for command in commands:
         sshinfo = str(command) #this is the user@hostname portion of the ssh command
-        logger.info("Scheduling: "+sshinfo)
+        logger.debug("\nScheduling: "+sshinfo)
         p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         processes.update({sshinfo: p})
 
-        if isSerial(ctx):
-            time.sleep(.05)
+        # User defined mode of operation
+        if anaxremote.isPseudoSerial(runmode):
+            time.sleep(pseudoDelay)
+        elif anaxremote.isSerial(runmode):
+            logger.debug("Waiting for process to complete before continuing...")
+            p.wait()
 
-    logger.debug("")
-    logger.debug("Processes Scheduled...  Waiting for completion... Do not interupt..\n")
+    logger.info("\nProcesses Scheduled...  Waiting for completion... Do not interupt..")
 
+    results = []
     failed = []
     #Wait for all background processes
     for command in commands:
@@ -109,25 +124,31 @@ def run(ctx, commands: [str]):
         outs = str()
         errs = str()
         try:
-            errs, outs = process.communicate(timeout=15)
+            outs, errs = process.communicate(timeout=ctx.obj[tflag])
         except TimeoutExpired:
             process.kill()
-            errs, outs = process.communicate()
+            outs, errs = process.communicate()
             failed.append(command)
 
-        #print output according to local log level
-        out=str(outs).rstrip()+str(errs).rstrip()
-        if(out != ""):
+        # print output according to local log level
+        out = str(outs).rstrip() + str(errs).rstrip()
+        if (out != ""):
+            logger.debug("")
+            logger.debug("EXECUTION DATA")
+            logger.debug(sshinfo)
+            logger.debug("Return Code: "+str(process.returncode))
+            logger.debug("Output:  ")
             logger.info(out)
 
-
-    # inform user of completion
-    logger.info("All Processes Completed.")
+    logger.info("")
 
     if len(failed) > 0:
         logger.info("Encountered the following failures:")
         for failure in failed:
             logger.info(str(failure))
+
+    # inform user of completion
+    logger.info("All Processes Completed.")
 
 def loadConfig(ctx, configfile: str):
     f = open(file=configfile)
@@ -136,13 +157,16 @@ def loadConfig(ctx, configfile: str):
     ctx.obj[json_env]=j[json_env]
 
 @click.group()
-@click.option('--loglevel', '-l', type=int, default=0, show_default=True, help="0=debug, 1=info, 2=produciton, 3=error, 4=critical")
-@click.option('--serial', '-s', is_flag=True, help="Change default parallel execution to serial.")
+@click.option('--loglevel', '-l', type=int, default=0, show_default=True, help="0=debug, 1=info, 2=production, 3=error, 4=critical")
+@click.option('--mode', '-m', type=int, default=0, show_default=True, help="Change master parallelism: 0=parallel, 1=pseudoparallel, 2=serial")
+@click.option('--timeout', '-t', type=int, default=15, show_default=True, help="Sets seconds the Master will wait for a Slave command to return.")
 @click.pass_context
-def cli(ctx, loglevel, serial):
+def cli(ctx, loglevel, mode, timeout):
     setupLogging(loglevel)
     ctx.obj = {}
-    ctx.obj[sflag]=serial
+    ctx.obj[mflag]=mode
+    ctx.obj[tflag]=timeout
+
 
 @click.command()
 @click.option('--prefix', '-p', type=str, required=True, help="Hostname prefix for which an index will be appended")
@@ -155,7 +179,7 @@ def validateHosts(ctx, prefix, domain, count):
     ctx.obj[dflag]=domain
     ctx.obj[cflag]=count
     hostnames = generateHostnames(ctx)
-    valcmds = generateValidationCmds(hostnames)
+    valcmds = generateCmds(ctx, vcmd)
     run(ctx, valcmds)
 
 @click.command()
@@ -165,21 +189,8 @@ def validateConfig(ctx, configfile):
     """Checks each each hostname in the json configuation file"""
     loadConfig(ctx, configfile)
     hostnames = ctx.obj[json_endpoints]
-    valcmds = generateValidationCmds(hostnames)
+    valcmds = generateCmds(ctx, vcmd)
     run(ctx, valcmds)
-
-@click.command()
-@click.option('--source', '-s', type=str, required=True, help="Source file/directory to be transfered")
-@click.option('--destination', '-d', type=str, required=True, help="Destination file/directory to recieve transfer")
-@click.option('--configfile', '-f', type=str, required=True, help="File containing configuration json")
-@click.pass_context
-def scpsend(ctx, source, destination, configfile):
-    """Sends source file to the corresponding destination on each config file host)"""
-    loadConfig(ctx, configfile)
-    cmds = generateSendCmds(source, destination, ctx.obj[json_endpoints])
-    run(ctx, cmds)
-
-
 
 @click.command()
 @click.option('--configfile', '-f', type=str, required=True, help="File containing configuration json")
@@ -191,20 +202,41 @@ def recieveSyslogs(ctx, configfile, logdir):
     cmds = generateReceiveSyslogCmds(ctx.obj[json_endpoints], logdir )
     run(ctx, cmds)
 
+@click.command()
+@click.option('--source', '-s', type=str, required=True, help="Source file/directory on local host")
+@click.option('--destination', '-d', type=str, required=True, help="Destination file/directory on remote host")
+@click.option('--configfile', '-f', type=str, required=True, help="File containing configuration json")
+@click.pass_context
+def scpsend(ctx, source, destination, configfile):
+    """Sends source file to the corresponding destination on each config file host)"""
+    loadConfig(ctx, configfile)
+    cmds = generateSendCmds(ctx, source, destination)
+    run(ctx, cmds)
 
+@click.command()
+@click.option('--source', '-s', type=str, required=True, help="Source file/directory on remote host")
+@click.option('--destination', '-d', type=str, required=True, help="Destination file/directory on local host")
+@click.option('--configfile', '-f', type=str, required=True, help="File containing configuration json")
+@click.pass_context
+def scpreceive(ctx, source, destination, configfile):
+    """Sends source file to the corresponding destination on each config file host)"""
+    loadConfig(ctx, configfile)
+    cmds = generateReceiveCmds(ctx, source, destination)
+    run(ctx, cmds)
 
 @click.command()
 @click.option('--configfile', '-f', type=str, required=True, help="File containing configuration json")
-@click.argument('command')
+@click.argument('command', nargs=-1)
 @click.pass_context
 def pushcommand(ctx, configfile, command):
     """Validates containers have transitioned to running"""
     loadConfig(ctx, configfile)
-    cmds = generateCmds(ctx.obj[json_endpoints], command)
+    cmds = generateCmds(ctx, ' '.join(command))
     run(ctx, cmds)
 
 cli.add_command(pushcommand)
 cli.add_command(scpsend)
+cli.add_command(scpreceive)
 
 cli.add_command(validateHosts)
 cli.add_command(validateConfig)
