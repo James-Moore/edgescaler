@@ -20,12 +20,12 @@ smflag = "smode"
 mode_parallel = 0
 mode_pseudoserial = 1
 mode_serial = 2
-pseudoDelay=1
+pseudoDelay=.2
 
 startOp = "start"
 stopOp = "stop"
+restartOp = "restart"
 registerOp = "register"
-registerPattern="IBM/pattern-ibm.helloworld"
 unregisterOp = "unregister"
 eventlogOp = "eventlog"
 queryRunningOp = "queryrunning"
@@ -33,6 +33,10 @@ validateRunningOp = "validaterunning"
 agreementsOp = "agreements"
 nodesOp = "node list"
 pruneOp = "prune"
+dockercpOp = "dockercp"
+dockerexecOp = "dockerexec"
+forcekillallOp ="forcekillall"
+containerconfigupdateOp = "containerconfigupdate"
 
 
 
@@ -239,16 +243,23 @@ def start(ctx):
     operation = startOp
     kickoff(ctx, operation)
 
+@click.command()
+@click.pass_context
+def restart(ctx):
+    """Starts Anax Containers on all hosts"""
+    operation = restartOp
+    kickoff(ctx, operation)
 
 @click.command()
 @click.option('--mmode', '-m', envvar="HZN_SCLR_MASTER_MODE", type=int, default=0, show_default=True, help="Change master parallelism: 0=parallel, 1=pseudoparallel, 2=serial")
 @click.option('--smode', '-s', envvar="HZN_SCLR_SLAVE_MODE", type=int, default=0, show_default=True, help="Change slave parallelisms: 0=parallel, 1=pseudoparallel, 2=serial")
+@click.argument('pattern')
 @click.pass_context
-def register(ctx, mmode, smode):
-    """Registers Anax Containers on all hosts with hello world"""
+def register(ctx, mmode, smode, pattern):
+    """Registers Anax Containers on all hosts with given pattern"""
     ctx.obj[mmflag]=mmode
     ctx.obj[smflag] = smode
-    operation = registerOp+" --"+smflag+" "+str(smode)+" "+registerPattern
+    operation = registerOp+" --"+smflag+" "+str(smode)+" "+pattern
     kickoff(ctx, operation)
 
 
@@ -322,19 +333,45 @@ def prune(ctx):
     operation = pruneOp
     kickoff(ctx, operation)
 
+@click.command()
+@click.option('--source', '-s', type=str, required=True, help="Source file/directory to be transfered")
+@click.option('--destination', '-d', type=str, required=True, help="Destination file/directory to recieve transfer")
+@click.pass_context
+def dockercp(ctx, source, destination):
+    """Executes Docker's cp command across every host in the configuration file for every container specified with -c"""
+    operation = dockercpOp+" --source "+source+" --destination "+destination
+    kickoff(ctx, operation)
 
+@click.command()
+@click.argument('cmd')
+@click.pass_context
+def dockerexec(ctx, cmd):
+    """Executes Docker's exec command across every host in the configuration file for every container specified with -c"""
+    kickoff(ctx, dockerexecOp+" "+cmd)
+
+@click.command()
+@click.pass_context
+def containerconfigupdate(ctx):
+    """Executes Docker's exec command across every host in the configuration file for every container specified with -c"""
+    kickoff(ctx, containerconfigupdateOp)
 
 cli.add_command(start)
+cli.add_command(restart)
+cli.add_command(stop)
+
 cli.add_command(register)
 cli.add_command(unregister)
-cli.add_command(eventlog)
-cli.add_command(stop)
+
 cli.add_command(agreements)
+cli.add_command(eventlog)
+
 cli.add_command(queryrunning)
 cli.add_command(validaterunning)
 cli.add_command(prune)
 
-
+cli.add_command(dockercp)
+cli.add_command(dockerexec)
+cli.add_command(containerconfigupdate)
 
 if __name__ == '__main__':
     cli()

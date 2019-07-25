@@ -22,7 +22,7 @@ python3 -m scale.anaxremote -f config.json -l 2 -r 1 -c $COUNT agreements |& tee
 python3 -m scale.anaxremote -f config.json -l 0 -r 0 -c $COUNT agreements |& tee log/agreements_postunregister-verbose.log
 
 #collect syslogs
-python3 -m tools.hosts recievesyslogs -f config/config.json.large -o log |& tee log/syslogcollect.log
+python3 -m tools.hosts recievesyslogs -f config.json -o log |& tee log/syslogcollect.log
 
 #Stop all agent containers
 python3 -m scale.anaxremote -f config.json -l 0 -r 1 -c $COUNT stop  |& tee log/stop.log
@@ -32,15 +32,19 @@ python3 -m scale.anaxremote -f config.json -l 2 -r 1 validaterunning |& tee log/
 
 #cleanup before run
 python3 -m scale.anaxremote -f config.json -l 1 -r 0 -c $COUNT prune |& tee log/initprune.log
+for i in $(cat config.json | jq -r '.endpoints | .[]'); do ssh root@$i "hostname & pkill -f scale.anaxscale" ; done
+wait
+
 
 runend=`date +%s`
 runtime=$((runend-runstart))
 echo "$runtime" > "$runtimelog"
 
 #Redact your cloud token
-find ./log/ -type f -exec sed -i 's/YOURPW/PW_REDACTED/g' {} \;
-
+find ./log/ -type f -exec sed -i 's/YOURPWHERE/PW_REDACTED/g' {} \;
 
 #Package the run results
-tar -zcvf edgescale-log-$(date +%Y%m%d_%H%M%S).tar.gz log
-#mv edgescale-log-*.tar.gz /home/parallels/scalereports
+if [ -d log ]; then
+    [ -f run*.log ] && mv run*.log log
+    tar -zcvf edgescale-log-$(date +%Y%m%d_%H%M%S).tar.gz log
+fi

@@ -109,7 +109,7 @@ def run(ctx, commands: [str]):
         outs = str()
         errs = str()
         try:
-            errs, outs = process.communicate(timeout=200)
+            errs, outs = process.communicate(timeout=15)
         except TimeoutExpired:
             process.kill()
             errs, outs = process.communicate()
@@ -204,9 +204,10 @@ def pushcommand(ctx, configfile, command):
     run(ctx, cmds)
 
 cli.add_command(pushcommand)
+cli.add_command(scpsend)
+
 cli.add_command(validateHosts)
 cli.add_command(validateConfig)
-cli.add_command(scpsend)
 cli.add_command(recieveSyslogs)
 
 if __name__ == '__main__':
