@@ -215,11 +215,11 @@ def scpsend(ctx, source, destination, configfile):
 
 @click.command()
 @click.option('--source', '-s', type=str, required=True, help="Source file/directory on remote host")
-@click.option('--destination', '-d', type=str, required=True, help="Destination file/directory on local host")
+@click.option('--destination', '-d', type=str, required=True, help="Destination directory on local host")
 @click.option('--configfile', '-f', type=str, required=True, help="File containing configuration json")
 @click.pass_context
 def scpreceive(ctx, source, destination, configfile):
-    """Sends source file to the corresponding destination on each config file host)"""
+    """Receives the source file from each of the hosts defined in configfile.  Source file is placed in a dynamically generated subdirectory of destination directory.)"""
     loadConfig(ctx, configfile)
     cmds = generateReceiveCmds(ctx, source, destination)
     run(ctx, cmds)
@@ -229,7 +229,7 @@ def scpreceive(ctx, source, destination, configfile):
 @click.argument('command', nargs=-1)
 @click.pass_context
 def pushcommand(ctx, configfile, command):
-    """Validates containers have transitioned to running"""
+    """Executes the command passed in on every host defined in the configfile"""
     loadConfig(ctx, configfile)
     cmds = generateCmds(ctx, ' '.join(command))
     run(ctx, cmds)
