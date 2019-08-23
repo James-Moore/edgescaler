@@ -1,15 +1,18 @@
 {
     "endpoints": [
-        "HZN_NODE_URL"
+        "HZN_NODE_HOSTNAME"
     ],
-    "env": {
-        "DOCKER_HUB_ID": "jamesjmoore",
+    "env": {        
+        "HC_DOCKER_TAG": "HORIZON_DOCKER_CONTAINER_VERSION",
+        "HZN_EXCHANGE_DNSARecord":"HOSTNAME:IPADDRESS",
+	"DOCKER_HUB_ID": "jamesjmoore",
         "EXCHANGE_PW": "YOUR_EXCHANGE_PW",
         "EXCHANGE_USER": "YOUR_EXCHANGE_USER",
         "HZN_AIC": "/root/anax-in-container/horizon-container",
-        "HZN_EXCHANGE_URL": "https://stg.edge-fabric.com/v1",
+        "HZN_EXCHANGE_URL": "https://obliging-snail-icp-cluster.icp:8443/ec-exchange/v1",
         "HZN_EXCHANGE_USER_AUTH": "YOUR_EXCHANGE_USER:YOUR_EXCHANGE_PW",
         "HZN_ORG_ID": "YOUR_HZN_ORGID",
+        "HZN_FSS_CSSURL": "https://obliging-snail-icp-cluster.icp:8443/ec-css/",
         "HZN_SCALER_DIR": "DIRECTORY_OF_SCALER",
         "HZN_SCALER_NAME": "scale.anaxscale",
         "MYDOMAIN": "YOUR_HZN_DOMAIN"

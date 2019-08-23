@@ -19,7 +19,7 @@ captureEnviornment
 captureExchangeNodes preregister
 captureAgbotsNodes preregister
 
-registerAgents 0 0 2 1 #args are localLoggingLevel, RemoteLoggingLevel, MasterParallelismLevel, SlaveParallelismLevel
+registerAgents 0 0 1 2 #args are localLoggingLevel, RemoteLoggingLevel, MasterParallelismLevel, SlaveParallelismLevel
 waitForAgreements 900
 
 captureAgreements postregister

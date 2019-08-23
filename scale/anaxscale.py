@@ -8,328 +8,71 @@ import time
 import socket
 from uuid import uuid4
 import json
-import logging
 import datetime
-import shlex
+import logging
+from scale import *
+from scale.logger import Logger
+from scale.manager import Manager
+from scale.operation import Operation
+from scale.horizonhelper import HorizonHelper
+from scale.commandhelper import CommandHelper
+from scale.dockerhelper import DockerHelepr
 
 
-logger = logging.getLogger(__name__)
-docker_socket="docker.socket"
-docker_service="docker.service"
-dockerOp="docker"
-cpOp="cp"
-execOp="exec"
-cflag = 'count'
-aflag = 'anax'
-oflag = 'organization'
-smflag = "smode"
-mode_parallel = 0
-mode_pseudoserial = 1
-mode_serial = 2
-pseudoDelay=.2
-hznprefix = 'horizon'
-hzncmd = 'hzn'
-baseport = 8080
+
+hhelper = HorizonHelper()
+chelper = CommandHelper()
+dhelper = DockerHelepr()
+
 hostname = socket.gethostname()
-uuidlog = open("uuid.log","a+")
-
-
-
-def timestamp()->str:
-    return "["+str(datetime.datetime.now()).split('.')[0]+"]\t"
-
-def debug(out):
-    logger.debug(timestamp()+str(out))
-
-def info(out):
-    logger.info(timestamp()+str(out))
-
-def warning(out):
-    logger.warning(timestamp()+str(out))
-
-def error(out):
-    logger.error(timestamp()+str(out))
-
-def isSerial(mode: int)->bool:
-    return mode == mode_serial
-
-def isPseudoSerial(mode: int)->bool:
-    return mode == mode_pseudoserial
-
-def isParallel(mode: int)->bool:
-    return mode == mode_parallel
-
-def generateHorizonURL(index: int)->str:
-    port = baseport + index
-    HORIZON_URL = "http://localhost:" + str(port)
-    return HORIZON_URL
-
-def generateUniqueNodeAuth():
-    unique = generateUniqueNodeName()+":"+generageUniqueNodeToken()
-    print(unique, file=uuidlog)
-    return unique
-
-def generageUniqueNodeToken():
-    return str(uuid4())
-
-def generateUniqueNodeName():
-    return str(uuid4())+"."+hostname
-
-def generateNodeAuth(index: int):
-    unique = hostname+"_"+hznprefix+str(index)+":"+"repeatabletoken"
-    print(unique, file=uuidlog)
-    return unique
-
-def buildHorizonContainerCommands(ctx, args: [str], containers: [int])->[]:
-    commands = []
-    cmd = ctx.obj[aflag]
-    for container in containers:
-        # build the list to send as the args parameter to subprocess.call
-        callList = buildHorizonContainerCommand(cmd, args, container)
-        commands.append(callList)
-    return commands
-
-#returns the list built from a command, its arguments, and a count
-def buildHorizonContainerCommand(cmd: str, args: [str], container: int)->[]:
-    cmdAsList = [cmd]
-    countAsList = [str(container)] #creating a list of strings to return in this method so we have to convert to string array element
-    callList = cmdAsList + args + countAsList #concat all elements into a single list
-    return callList #return the call list
-
-#Make the attribute lists.  Each list will be associated with a running anax container
-def generateRegAttrLists(org: str, pattern: str, containers: [int])->[str]:
-    attrLists = []
-    for i in containers:
-        #attrLists.append(["register", "-n", generateUniqueNodeAuth(), org, pattern])
-        attrLists.append(["register", "-v", "-n", generateNodeAuth(i), org, pattern])
-
-    return attrLists
-
-#Make the attribute lists.  Each list will be associated with a running anax container
-def generateUnregAttrLists(containers: [int])->[str]:
-    attrLists = []
-    for i in containers:
-        attrLists.append(["unregister", "-v", "-f", "-r"])
-    return attrLists
-
-#Make the attribute lists.  Each list will be associated with a running anax container
-def generateEventlogAttrLists(containers: [int])->[str]:
-    attrLists = []
-    for i in containers:
-        attrLists.append(["eventlog", "list", "-v", "-a"])
-    return attrLists
-
-#get the list of indexes assosciated with containers that are running from 1..COUNT
-def getRunningContainerList(count: int)->[int]:
-    client = docker.from_env()
-
-    containers2stop = []
-
-    # generate list of running anax containers
-    for i in range(count):
-        index = i+1 #accouting for the fact that there is non-zero indexing in AIC horizon-container
-        try:
-            name = hznprefix+str(index) #name of the horizon container
-            out = client.containers.get(name) #check if the container exists
-            containers2stop.append(index) #if it does then add the index of the running container to the list
-        except:
-            #if the container does not exist then do nothing
-            pass
-
-    #return list of running containers
-    return containers2stop
-
-#get the names of all running anax containers
-def getRunningAnaxContainerNames()->[str]:
-    client = docker.from_env()
-
-    names = []
-
-    for container in client.containers.list(filters={"name": "horizon"}):
-        cenv = container.attrs['Config']['Env']
-        for val in cenv:
-            sval = val.split('=')
-            if sval[0] == 'DOCKER_NAME' and sval[1].startswith('horizon'):
-                names.append(sval[1])
-
-    return names
-
-def getContainersList(count: int)->[]:
-    containers = []
-    for i in range(count):
-        containers.append(i+1)
-    return containers
+logger = Logger(__name__)
+manager = Manager(logger)
 
 def isAnaxRunning(index: int)->bool:
-    return hznprefix+str(index) in getRunningAnaxContainerNames()
-
-#Executes every command in the array
-def executeCommands(ctx, commands: [str])->bool:
-    cmd = ctx.obj[aflag]
-    runmode = ctx.obj[smflag]
-    processes = []
-
-    #Use subprocess to run the command 'count' number of times
-    for command in commands:
-        debug("Calling: "+str(command))
-        p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
-        processes.append(p)
-        # User defined mode of operation
-        if isPseudoSerial(runmode):
-            debug(str(["Sleeping: " + str(pseudoDelay)]))
-            time.sleep(pseudoDelay)
-        elif isSerial(runmode):
-            debug("Waiting for process to complete before continuing...")
-            p.wait()
-
-    debug("All Processes Scheduled...  Waiting for completion... Do not interupt..")
-
-    output = []
-    for process in processes:
-        debug("Waiting for: " + str(process.pid))
-        process.wait()  # wait for all processes to run to completion
-        outs = str()
-        errs = str()
-        try:
-            errs, outs = process.communicate()
-        except TimeoutExpired:
-            pass
-
-        output.append(timestamp() + "\n"+str(outs).rstrip() + str(errs).rstrip())
-
-
-    for out in output:
-        logger.info(out) #timestamps added in while loop above so nno need to call info() which adds its own timestamp
-
-    debug("All Processes Complted.")
-    return True
-
+    return hznprefix+str(index) in dhelper.getRunningAnaxContainerNames()
 
 #executes a single hzn command
 def executeSingleHzn(cmd: str, argList: [str], index: int)->str:
-    HORIZON_URL = generateHorizonURL(index)
+    HORIZON_URL = hhelper.generateHorizonURL(index)
     os.environ["HORIZON_URL"] = HORIZON_URL
 
     #verify that the command exists
     if not shutil.which(cmd):
-        debug("The required command " + hzncmd + " has not been found.")
+        logger.debug("The required command " + hzncmd + " has not been found.", newline=True)
         raise Exception()
 
     #verify that the indexed anax container is running
     if not isAnaxRunning(index):
-        debug("Anax container " + hznprefix+str(index) + " is not running.")
+        logger.debug("Anax container " + hznprefix+str(index) + " is not running.", newline=True)
         raise Exception()
 
     callList = [cmd] + argList
-    debug("Call: " + HORIZON_URL)
-    debug("Call: " + str(callList))
+    logger.debug("Call: " + HORIZON_URL, newline=True)
+    logger.debug("Call: " + str(callList), newline=True)
     out = subprocess.check_output(callList)
 
     return out
 
-#This fucntion wraps hzn operations
-def executeHZN(ctx, hznattrLists: [], containers: [int], print: bool)->bool:
-    cmd = hzncmd
-    result = False
-    processes = []
-    runmode = ctx.obj[smflag]
-    #verify that the command exists
-    if shutil.which(cmd):
-
-        i = 0
-        #Use subprocess to run the command 'count' number of times
-        for container in containers:
-            # build the list to send as the args parameter to subprocess.call
-            callList = [cmd]+hznattrLists.pop()
-
-            HORIZON_URL = generateHorizonURL(container)
-            os.environ["HORIZON_URL"] = HORIZON_URL
-
-            debug("Call"+str(container)+": " + HORIZON_URL)
-            debug("Call"+str(container)+": " + str(callList))
-
-            p = subprocess.Popen(callList, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
-            processes.append([HORIZON_URL, p])
-            # User defined mode of operation
-            if isPseudoSerial(runmode):
-                debug(str(["Sleeping: " + str(pseudoDelay)]))
-                time.sleep(pseudoDelay)
-            elif isSerial(runmode):
-                debug("Waiting for process to complete before continuing...")
-                p.wait()
-
-        debug("All Processes Scheduled...  Waiting for completion... Do not interupt..")
-
-        output = []
-        for arr in processes:
-            hznurl=arr[0]
-            process=arr[1]
-            debug("Waiting for: "+str(process.pid))
-            process.wait() #wait for all processes to run to completion
-            if print:
-                outs = str()
-                errs = str()
-                try:
-                    errs, outs = process.communicate()
-                except TimeoutExpired:
-                    pass
-
-                output.append(timestamp()+hostname+"\n"+hznurl+"\n"+str(outs).rstrip() + str(errs).rstrip())
-
-
-        if print:
-            for out in output:
-                logger.info(out) #timestamps added in while loop above so nno need to call info() which adds its own timestamp
-
-        debug("All Processes Completed.")
-        result = True
-
-    else:
-        error("The required command "+cmd+" has not been found.")
-
-    return result
 
 
 @click.group()
+@click.option('--workerpseudodelay', envvar="HZN_SCLR_WORKER_PSEUDODELAY", type=float, default=0.2, show_default=True, help="Worker node delay if runmode is set to pseudoparallel")
 @click.option('--log', '-l', type=int, default=1, show_default=True, help="0=debug, 1=info, 2=warning, 3=error, 4=critical")
 @click.option('--count', '-c', type=int, default=1, show_default=True, help="Number of horizon containers")
 @click.option('--anax', '-a', envvar="HZN_AIC", required=True, help="the location of ANAX_IN_CONTAINER's horizon-container script. Export HZN_AIC instead of cli flag")
 @click.option('--organization', '-o', envvar="HZN_ORG_ID", required=True, help="Must set HZN_ORG_ID or pass flag")
 @click.pass_context
-def cli(ctx, organization, anax, count, log):
+def cli(ctx, organization, anax, count, log, workerpseudodelay):
     """Used to control the Anax Docker Containers on this host.  All commands consume the count flag unless specified.
     To see which commands consume the count flag issue --help on the individual command.  The count flag replicates a
      given operation across containers 1..COUNT."""
 
+    global pseudoDelay
+    pseudoDelay = workerpseudodelay
+
     # create logging
     global logger
-    lglvl = logging.INFO
-
-    if log == 0:
-        lglvl = logging.DEBUG
-    elif log == 1:
-        lglvl = logging.INFO
-    elif log == 2:
-        lglvl = logging.WARNING
-    elif log == 3:
-        lglvl = logging.ERROR
-    elif log == 4:
-        lglvl = logging.CRITICAL
-
-    logger.setLevel(lglvl)
-
-    # create console handler and set level to debug
-    ch = logging.StreamHandler()
-    ch.setLevel(lglvl)
-
-    # create formatter
-    #formatter = logging.Formatter('%(message)s')
-
-    # add formatter to ch
-    #ch.setFormatter(formatter)
-
-    # add ch to logging
-    logger.addHandler(ch)
+    logger.setupLogger(loglevel=log)
 
     ctx.obj = {
         cflag: count,
@@ -348,10 +91,26 @@ def register(ctx, smode, pattern):
     ctx.obj[smflag] = smode
     count = ctx.obj[cflag]
     org = ctx.obj[oflag]
-    containers = getRunningContainerList(count)
-    hznattrLists = generateRegAttrLists(org, pattern, containers)
-    result = executeHZN(ctx, hznattrLists, containers, False)
-    logger.info(result)
+    containers = dhelper.getRunningContainerList(count)
+
+    #Debugging Start
+    logger.debug("REGISTER: Running Agent Containers...", newline=True)
+    for container in containers:
+        logger.debug(hhelper.generateNodeAuth(hostname=hostname, containerIndex=container), newline=True)
+    #Debugging End
+
+    hznattrLists = hhelper.generateRegAttrLists(org=org, pattern=pattern, hostname=hostname, containers=containers)
+
+    # Debugging Start
+    logger.debug("REGISTER: Attribute Lists to execute...", newline=True)
+    for hznattr in hznattrLists:
+        logger.debug(hznattr, newline=True)
+    # Debugging End
+
+    logger.debug("REGISTER: Execute HZN on Attribute lists STARTED", newline=True)
+    operations = hhelper.generateHorizonOperations(hznattrLists, containers, logger)
+    manager.run(runmode=smode, operations=operations)
+    logger.debug("REGISTER: Execute HZN on Attribute lists COMPLETED", newline=True)
 
 
 @click.command()
@@ -361,60 +120,92 @@ def unregister(ctx, smode):
     """Unregisters the Anax Containers on this host"""
     ctx.obj[smflag] = smode
     count = ctx.obj[cflag]
-    containers = getRunningContainerList(count)
-    hznattrLists = generateUnregAttrLists(containers)
-    result = executeHZN(ctx, hznattrLists, containers, False)
-    logger.info(result)
-
+    containers = dhelper.getRunningContainerList(count)
+    hznattrLists = hhelper.generateUnregAttrLists(containers)
+    operations = hhelper.generateHorizonOperations(hznattrLists, containers, logger)
+    manager.run(runmode=smode, operations=operations)
 
 @click.command()
 @click.option('--smode', '-s', envvar="HZN_SCLR_SLAVE_MODE", type=int, default=0, show_default=True, help="Change slave parallelisms: 0=parallel, 1=pseudoparallel, 2=serial")
+@click.option('--eventlogflags', '-e', type=str, default="va", show_default=True, help="Flag values for hzn eventlog list")
 @click.pass_context
-def eventlog(ctx, smode):
+def eventlog(ctx, smode, eventlogflags):
     """Collects the eventlogs for each container on this host"""
     ctx.obj[smflag] = smode
     count = ctx.obj[cflag]
-    containers = getRunningContainerList(count)
-    hznattrLists = generateEventlogAttrLists(containers)
-    result = executeHZN(ctx, hznattrLists, containers, True)
-    logger.info(result)
+    containers = dhelper.getRunningContainerList(count)
+    hznattrLists = hhelper.generateEventlogAttrLists(containers, eventlogflags)
+    operations = hhelper.generateHorizonOperations(hznattrLists, containers, logger)
+    manager.run(runmode=smode, operations=operations)
 
+@click.command()
+@click.option('--logdir', '-o', type=str, required=True, help="Logging Directory")
+@click.pass_context
+def agentlogs(ctx, logdir):
+    """Acquires all agent container logs on this host"""
+    logger.info("Capturing agent logs on " + hostname, timestamp=False)
+    client = docker.from_env()
+    p = os.path.join(logdir, syslogs_capturedir)
+    os.makedirs(p, exist_ok=True)
+    p = os.path.join(p, hostname)
+    os.makedirs(p, exist_ok=True)
+
+    #for container in client.containers.list(filters={"name": "horizon"}):
+    for container in client.containers.list(all=True, filters={"name": "horizon"}):
+        containerName = container.attrs['Name']
+
+        #remove the '/' character from the default docker api behavior of returning the container name
+        #with the format '/NAME'.  The reformatting makes it compatable with the rest of this harness'
+        #codebase
+        if containerName[0] == "/":
+            containerName = containerName[1:]
+
+        clog = container.logs()
+
+        alog = os.path.join(p, hostname+"_"+containerName+".log")
+        with open(alog, 'w') as alogFile:
+            alogFile.write(clog)
+
+        if(logger.logger.isEnabledFor(logging.DEBUG)): #totally bizzare check to see if the python logger in Logger is enabled for DEBUG and if so then print to debug level
+            logger.debug(str("Agent log "+hostname+"_"+containerName+" written."))
+
+    logger.info("Agent Logs on "+hostname+" capture.", timestamp=False)
 
 @click.command()
 @click.pass_context
 def start(ctx):
     """Starts Anax Containers on this host"""
+    environment = os.environ.copy()
+    aicCommand = ctx.obj[aflag]
     count = ctx.obj[cflag]
-    containers = getContainersList(count)
-    debug("Starting: " + str(containers))
-    commands = buildHorizonContainerCommands(ctx,  ["start"], containers)
-    result = executeCommands(ctx, commands)
-    logger.info(result)
-
+    containers = dhelper.produceIndicesList(count)
+    logger.debug("Starting: " + str(containers), newline=True)
+    operations = chelper.generateHorizonContainerCommands(environment=environment, aicCommand=aicCommand, arg="start", containers=containers, logger=logger)
+    manager.run(runmode=mode_parallel, operations=operations)
 
 @click.command()
 @click.pass_context
 def stop(ctx):
     """Stops Anax Containers on this host"""
+    environment = os.environ.copy()
+    aicCommand = ctx.obj[aflag]
     count = ctx.obj[cflag]
-    containers = getRunningContainerList(count)
-    debug("Stopping: "+str(containers))
-    commands = buildHorizonContainerCommands(ctx, ["stop"], containers)
-    result = executeCommands(ctx, commands)
-    logger.info(result)
-
+    containers = dhelper.getRunningContainerList(count)
+    logger.debug("Stopping: "+str(containers), newline=True)
+    operations = chelper.generateHorizonContainerCommands(environment=environment, aicCommand=aicCommand, arg="stop", containers=containers, logger=logger)
+    manager.run(runmode=mode_parallel, operations=operations)
 
 @click.command()
 @click.pass_context
 def restart(ctx):
     """Restarts Anax Containers on this host"""
+    environment = os.environ.copy()
+    aicCommand = ctx.obj[aflag]
     count = ctx.obj[cflag]
-    containers = getRunningContainerList(count)
-    debug("Stopping: " + str(containers))
-    commands = buildHorizonContainerCommands(ctx, ["restart"], containers)
-    result = executeCommands(ctx, commands)
-    logger.info(result)
-
+    containers = dhelper.getRunningContainerList(count)
+    logger.debug("Stopping: " + str(containers), newline=True)
+    operations = chelper.generateHorizonContainerCommands(environment=environment, aicCommand=aicCommand, arg="restart", containers=containers, logger=logger)
+    manager.run(runmode=mode_parallel, operations=operations)
 
 @click.command()
 @click.pass_context
@@ -428,7 +219,7 @@ def agreements(ctx):
     for i in range(count):
         result = agreementWorker(i+1) and result
 
-    logger.info(result)
+    logger.info(result, timestamp=False)
 
 def agreementWorker(index: int)->bool:
     result = False
@@ -442,9 +233,9 @@ def agreementWorker(index: int)->bool:
             result = val != ""
 
 
-        debug("AGREEMENT INFORMATION:\nHOSTNAME: "+hostname+"\nAGENT "+generateHorizonURL(index)+"\nAGREEMENT:\n"+json.dumps(jout))
+        logger.debug("AGREEMENT INFORMATION:\nHOSTNAME: "+hostname+"\nAGENT "+hhelper.generateHorizonURL(index)+"\nAGREEMENT:\n"+json.dumps(jout), newline=True)
     except:
-        warning("Issue encountered executing: Node is "+hznprefix+str(index)+" Command is "+str([hzncmd]+callList))
+        logger.debug("Issue encountered executing: Node is "+hznprefix+str(index)+" Command is "+str([hzncmd]+callList), newline=True)
         pass
 
     return result
@@ -454,7 +245,7 @@ def agreementWorker(index: int)->bool:
 def agreement(anax_container_number):
     """Returns True if an agreement has been established and is running; otherwise returns False. Note: Does not consume count flag.  Must pass container number as argument.  """
     result = agreementWorker(anax_container_number)
-    logger.info(result)
+    logger.info(result, timestamp=False)
     return result
 
 
@@ -476,17 +267,17 @@ def node(anax_container_number):
     except:
         pass
 
-    logger.info(result)
+    logger.info(result, timestamp=False)
 
 def runprocess(runlist: [str]) -> int:
     p = subprocess.Popen(runlist, stdout=subprocess.PIPE)
     p.wait()
     rc = p.returncode
-    debug(str(runlist)+"..."+str(rc))
+    logger.debug(str(runlist)+"..."+str(rc), newline=True)
     return p.returncode
 
 def servicestart(service: str) -> int:
-    debug("CALLING SERVICE START: "+service)
+    logger.debug("CALLING SERVICE START: "+service, newline=True)
     if serviceisactive(service): #if service is active stop it before trying to start it
         servicestop(service)
 
@@ -496,7 +287,7 @@ def servicestart(service: str) -> int:
     return rc
 
 def servicestop(service: str) -> int:
-    debug("CALLING SERVICE STOP: "+service)
+    logger.debug("CALLING SERVICE STOP: "+service, newline=True)
     rc=0
     if serviceisactive(service):
         runlist = ["systemctl", "stop", service]
@@ -515,14 +306,14 @@ def prune(ctx):
     client = docker.from_env()
 
     try:
-        debug("Unregisters all agents.  Stops all containers, Prunes all docker elements, Restarts docker.socket and docker.service")
+        logger.debug("Unregisters all agents.  Stops all containers, Prunes all docker elements, Restarts docker.socket and docker.service", newline=True)
         ctx.obj[cflag]=len(client.containers.list())
         unregister(ctx)
     except:
         pass
 
     try:
-        debug("Stoping all running containers...")
+        logger.debug("Stoping all running containers...", newline=True)
         client = docker.from_env()
         for container in client.containers.list():
             try:
@@ -533,16 +324,16 @@ def prune(ctx):
         pass
 
     try:
-        debug("Pruning System...")
+        logger.debug("Pruning System...", newline=True)
         pruneContainers = client.containers.prune()
         pruneImages = client.images.prune(filters={'dangling': False})
         pruneNetworks = client.networks.prune()
         pruneVolumes = client.volumes.prune()
 
-        debug("Prune Containers: "+ str(pruneContainers))
-        debug("Prune Images: " + str(pruneImages))
-        debug("Prune Networks: " + str(pruneNetworks))
-        debug("Prune Volumes: " + str(pruneVolumes))
+        logger.debug("Prune Containers: "+ str(pruneContainers), newline=True)
+        logger.debug("Prune Images: " + str(pruneImages), newline=True)
+        logger.debug("Prune Networks: " + str(pruneNetworks), newline=True)
+        logger.debug("Prune Volumes: " + str(pruneVolumes), newline=True)
     except:
         pass
 
@@ -559,11 +350,11 @@ def prune(ctx):
     servicestart(docker_socket)
     servicestart(docker_service)
 
-    debug("CALLING ISACTIVE VALIDATIONS:")
+    logger.debug("CALLING ISACTIVE VALIDATIONS:", newline=True)
     dcksctrc = serviceisactive(docker_socket)
     dcksvcrc = serviceisactive(docker_service)
-    debug("IsActive - docker.socket: " + str(dcksctrc))
-    debug("IsActive - docker.service: " + str(dcksvcrc))
+    logger.debug("IsActive - docker.socket: " + str(dcksctrc), newline=True)
+    logger.debug("IsActive - docker.service: " + str(dcksvcrc), newline=True)
 
 
 @click.command()
@@ -573,9 +364,9 @@ def prune(ctx):
 def queryrunning(ctx, list, count):
     """Lists the names of running anax containers.  Note: Does not consume count flag"""
     if list:
-        logger.info(str(getRunningAnaxContainerNames()))
+        logger.info(str(dhelper.getRunningAnaxContainerNames()), timestamp=False)
     else:
-        logger.info(str(len(getRunningAnaxContainerNames())))
+        logger.info(str(len(dhelper.getRunningAnaxContainerNames())), timestamp=False)
 
 
 @click.command()
@@ -600,26 +391,24 @@ def validaterunning(ctx):
             "Running": running
                   }
 
-        if(logger.isEnabledFor(logging.DEBUG)):
-            debug(str(status))
+        if(logger.logger.isEnabledFor(logging.DEBUG)):
+            logger.debug(str(status))
         else:
-            logger.info(running)
+            logger.info(running, timestamp=False)
 
 
 def dockercpworker(ctx, source, destination):
     count = ctx.obj[cflag]
-    containers = getRunningContainerList(count)
+    containers = dhelper.getRunningContainerList(count)
 
-    commands = []
-    validations = []
+    operations = []
     for container in containers:
         command = [dockerOp, cpOp, source, hznprefix + str(container) + ":" + destination]
-        commands.append(command)
-        validation = [dockerOp, "exec", "-i", hznprefix + str(container), "cat", destination]
-        validations.append(validation)
+        operation = Operation(operation=command, logger=logger)
+        operations.append(operation)
 
-    logger.info("Performing Docker CP")
-    executeCommands(ctx, commands)
+    logger.info("Performing Docker CP", timestamp=False)
+    manager.run(runmode=mode_parallel, operations=operations)
 
 @click.command()
 @click.option('--source', '-s', type=str, required=True, help="Source file/directory to be transfered")
@@ -631,16 +420,16 @@ def dockercp(ctx, source, destination):
 
 def dockerexecworker(ctx, commandargument):
     count = ctx.obj[cflag]
-    containers = getRunningContainerList(count)
+    containers = dhelper.getRunningContainerList(count)
 
-    commands = []
-    validations = []
+    operations = []
     for container in containers:
         command = [dockerOp, execOp, "-i", hznprefix + str(container)] + list(commandargument)
-        commands.append(command)
+        operation = Operation(operation=command, logger=logger)
+        operations.append(operation)
 
-    logger.info("Performing Docker Exec")
-    executeCommands(ctx, commands)
+    logger.info("Performing Docker Exec", timestamp=False)
+    manager.run(runmode=mode_parallel, operations=operations)
 
 @click.command()
 @click.argument('commandargument', nargs=-1)
@@ -653,19 +442,19 @@ def dockerexec(ctx, commandargument):
 @click.pass_context
 def containerconfigupdate(ctx):
     """[Temporary Command] Used to perform an update on all containers anax.json files"""
-    logger.info("UPDATING CONTAINER CONFIGURATIONS")
+    logger.info("UPDATING CONTAINER CONFIGURATIONS", timestamp=False)
     dockerexecworker(ctx, ("mkdir", "/root/scaler"))
     dockerexecworker(ctx, ("ls", "-al", "/root"))
     dockercpworker(ctx, "/root/scaler/tools/configupdate.sh", "/root/scaler/")
     dockerexecworker(ctx, ("ls", "-al", "/root/scaler"))
     dockerexecworker(ctx, ("/root/scaler/configupdate.sh", ""))
-    logger.info("Contents of: /etc/horizon/anax.json")
+    logger.info("Contents of: /etc/horizon/anax.json", timestamp=False)
     dockerexecworker(ctx, ("cat", "/etc/horizon/anax.json"))
-    logger.info("Contents of: /root/scaler/anax.json")
+    logger.info("Contents of: /root/scaler/anax.json", timestamp=False)
     dockerexecworker(ctx, ("cat", "/root/scaler/anax.json"))
-    logger.info("Copying: /root/scaler/anax.json to /etc/horizon/anax.json")
+    logger.info("Copying: /root/scaler/anax.json to /etc/horizon/anax.json", timestamp=False)
     dockerexecworker(ctx, ("cp", "/root/scaler/anax.json", "/etc/horizon/anax.json"))
-    logger.info("Contents of: /etc/horizon/anax.json")
+    logger.info("Contents of: /etc/horizon/anax.json", timestamp=False)
     dockerexecworker(ctx, ("cat", "/etc/horizon/anax.json"))
 
 
@@ -679,7 +468,7 @@ cli.add_command(unregister)
 cli.add_command(agreements)
 cli.add_command(agreement)
 cli.add_command(eventlog)
-
+cli.add_command(agentlogs)
 
 cli.add_command(node)
 cli.add_command(queryrunning)

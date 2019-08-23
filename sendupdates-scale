@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+echo "STARTING SEND"
+cd /home/parallels/PycharmProjects/edgescaler
+python3 -m tools.hosts -l 0 -m 0 --headpseudodelay .05 scpsend -s /home/parallels/PycharmProjects/edgescaler/scale -d /root/scaler/ -f config/config.json.allvalid 
+echo "COMPLETED SEND"
