@@ -43,7 +43,7 @@ function captureExchangeNodes() {
 
 
 function captureAgbotsNodes() {
-    agbots=$(kubectl get pod | grep "Running" | grep -v "agbot-db" | grep "agbot" | awk '{print $1}')
+    agbots=$(kubectl get pod | grep "Running" | grep -v "agbotdb" | grep "agbot" | awk '{print $1}')
     for ab in ${agbots} ; do
         captureAgbotNodes ${ab}
     done
@@ -80,7 +80,7 @@ function cleanHorizonExchange() {
 }
 
 function cleanHorizonAgbots() {
-    agbots=$(kubectl get pod | grep "Running" | grep -v "agbot-db" | grep "agbot" | awk '{print $1}')
+    agbots=$(kubectl get pod | grep "Running" | grep -v "agbotdb" | grep "agbot" | awk '{print $1}')
     for ab in ${agbots} ; do
         cleanHorizonAgbot ${ab}
     done
@@ -133,8 +133,8 @@ function cleanHorizon() {
 
 function cleanScaler() {
     printf "Cleaning any lingering scaler components... \n" |& tee log/cleaning-scaler.log
-    python3 -m tools.hosts -l 0 pushcommand -f config.json "kill \$(ps aux | grep 'scale.anax' | grep -v grep | awk '{print \$2}') 2> /dev/null" |& tee -a log/cleaning-scaler.log
-    python3 -m tools.hosts -l 0 pushcommand -f config.json "kill \$(ps aux | grep 'tools.hosts' | grep -v grep | awk '{print \$2}') 2> /dev/null" |& tee -a log/cleaning-scaler.log
+    python3 -m tools.hosts -l 0 pushcommand -f config.json "kill -9 \$(ps aux | grep 'scale.anax' | grep -v grep | awk '{print \$2}') 2> /dev/null" |& tee -a log/cleaning-scaler.log
+    python3 -m tools.hosts -l 0 pushcommand -f config.json "kill -9 \$(ps aux | grep 'tools.hosts' | grep -v grep | awk '{print \$2}') 2> /dev/null" |& tee -a log/cleaning-scaler.log
 }
 
 function startAgents() {
@@ -234,7 +234,7 @@ function captureAgentLogging() {
 
 function stopAgentLogging() {
     printf "Stopping Log Collection for Agents... \n" | tee log/agentlogging-stopping.log
-    python3 -m tools.hosts -l 0 pushcommand -f config.json "kill \$(ps -ef | grep 'tail -f /var/log/syslog' | grep -v grep | awk '{print \$2}') 2> /dev/null" | tee -a log/agentlogging-stopping.log
+    python3 -m tools.hosts -l 0 pushcommand -f config.json "kill -9 \$(ps -ef | grep 'tail -f /var/log/syslog' | grep -v grep | awk '{print \$2}') 2> /dev/null" | tee -a log/agentlogging-stopping.log
 }
 
 function captureAgbotLogging() {
@@ -308,7 +308,7 @@ function killRun() {
     id=$(ps -ef | grep kickoff | grep -v grep | awk '{print $2}')
     if [ -n "${id}" ]; then
         echo "Killing Kickoff PID ${id}"
-        kill ${id}
+        kill -9 ${id}
     else
         echo "Kickoff Not Running. Nothing To Kill."
     fi

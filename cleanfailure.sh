@@ -6,6 +6,8 @@ killRun
 pattern="IBM/pattern-ibm.helloworld"
 nodesearchkey="edge-scale-test"
 
+
+#Validate Correct Number of Arguments
 if [ "$#" -ne 1 ]; then
     echo ""
     echo "    USAGE:"
@@ -16,7 +18,7 @@ if [ "$#" -ne 1 ]; then
 fi
 
 validateEnviroment
-icpLogin ICPUSER ICPPASS https://IPADDRESS:PORT
+icpLogin [ICPUSERHERE] [ICPPASSHERE] https://[EXCHANGEIPADDRESSHERE]:8443
 
 phase=$1
 
@@ -48,5 +50,5 @@ destroyAgents
 stopAgentLogging
 markRuntime
 
-#redactLogs PASSWORDTOSCRUBHERE
+redactLogs [YOURKEYHERE]
 packageLogs

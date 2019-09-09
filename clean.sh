@@ -3,7 +3,7 @@
 source /root/.local/env/myenv.sh
 source libkickoff.sh
 
-#pattern="obliging-snail-icp-cluster/unhealthyhello"
+#pattern="[YOUR_HORIZON_ORGID_HERE]/unhealthyhello"
 pattern="IBM/pattern-ibm.helloworld"
 nodesearchkey="edge-scale-test"
 runstart=`date +%s`
@@ -12,7 +12,7 @@ runtimelog="$logdir/runtime.log"
 COUNT=20
 
 validateEnviroment
-icpLogin ICPUSER ICPPASS https://IPADDRESS:PORT
+icpLogin [ICPUSERHERE] [ICPPASSHERE] https://[EXCHANGEIPADDRESSHERE]:8443
 destroyAgents
 cleanScaler
 cleanHorizon

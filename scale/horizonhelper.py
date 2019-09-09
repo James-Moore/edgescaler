@@ -1,5 +1,4 @@
 import os
-from uuid import uuid4
 from scale import *
 from scale.logger import Logger
 
@@ -18,17 +17,6 @@ class HorizonHelper:
     def generateNodeAuth(self, hostname: str, containerIndex: int) -> str:
         unique = hostname + "_" + self.generateHorizonContainerName(containerIndex) + ":" + "repeatabletoken"
         return unique
-
-    def generateUniqueNodeAuth(self, hostname: str):
-        unique = self.generateUniqueNodeName(hostname) + ":" + self.generageUniqueNodeToken()
-        print(unique, file=uuidlog)
-        return unique
-
-    def generageUniqueNodeToken(self):
-        return str(uuid4())
-
-    def generateUniqueNodeName(self, hostname: str):
-        return str(uuid4()) + "." + hostname
 
     # Make the attribute lists.  Each list will be associated with a running anax container
     def generateRegAttrLists(self, org: str, pattern: str, hostname: str, containers: [int]) -> [str]:

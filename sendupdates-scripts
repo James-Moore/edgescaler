@@ -3,5 +3,5 @@ echo "STARTING SEND"
 cd /home/parallels/PycharmProjects/edgescaler
 rm ~/Desktop/temp/scaler/*; 
 cp *.sh ~/Desktop/temp/scaler/; 
-python3 -m tools.hosts -l 0 -m 1 --headpseudodelay .05 scpsend -s /home/parallels/Desktop/temp/scaler/ -d /root/ -f config/config.json.allvalid
+python3 -m tools.hosts -l 0 -m 0 scpsend -s /home/parallels/Desktop/temp/scaler/ -d /root/ -f config.json
 echo "COMPLETED SEND"

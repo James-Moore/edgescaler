@@ -18,7 +18,7 @@ if [ ! -x ${cleanfailure} ]; then
     exit -1
 fi
 
-if [ ${2} -lt 0 ] || [ ${2} -gt 1 ]; then
+if (( ${2} < 0 )) || (( ${2} > 1 )); then
     echo "RunPhase must be 0 or 1.  Exiting."
     exit -1
 fi

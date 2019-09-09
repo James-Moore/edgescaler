@@ -11,8 +11,7 @@ runtimelog="$logdir/runtime.log"
 COUNT=20
 
 validateEnviroment
-icpLogin ICPUSER ICPPASS https://IPADDRESS:PORT
-cleanLogs
+icpLogin [ICPUSERHERE] [ICPPASSHERE] https://[EXCHANGEIPADDRESSHERE]:8443
 captureAgbotsNodes
 captureExchangeNodes
 

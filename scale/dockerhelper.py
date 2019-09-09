@@ -29,7 +29,7 @@ class DockerHelepr:
         return containers2stop
 
     # get the names of all running anax containers
-    def getRunningAnaxContainerNames(self, ) -> [str]:
+    def getRunningAnaxContainerNames(self ) -> [str]:
         client = docker.from_env()
 
         names = []
@@ -47,5 +47,6 @@ class DockerHelepr:
         containers = []
         for i in range(count):
             containers.append(i + 1)
+
         return containers
 

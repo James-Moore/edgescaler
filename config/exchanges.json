@@ -1,0 +1,37 @@
+{
+    "EXCHANGE": {
+        "SNAIL": {
+            "IPADDRESS": "[EXCHANGEIPADDRESSHERE]",
+            "FQDN": "[EXCHANGEHOSTNAMEHERE]",
+            "PORT": "8443",
+            "VERSION": "1",
+            "PROTOCOL": "https",
+            "ORGID": "[YOUR_HORIZON_ORGID_HERE]",
+            "USEREX": {
+                "NAME": "iamapikey",
+                "PASSWORD": "[YOURKEYHERE]"
+            },
+            "USERICP": {
+                "NAME": "[ICPUSERHERE]",
+                "PASSWORD": "[ICPPASSHERE]"
+            }
+
+        },
+        "ICPRTP": {
+            "IPADDRESS": "[EXCHANGEIPADDRESSHERE]",
+            "FQDN": "[EXCHANGEHOSTNAMEHERE]",
+            "PORT": "8443",
+            "VERSION": "1",
+            "PROTOCOL": "https",
+            "ORGID": "[YOUR_HORIZON_ORGID_HERE]",
+            "USEREX": {
+                    "NAME": "iamapikey",
+                    "PASSWORD": "[YOURKEYHERE]"
+            },
+            "USERICP": {
+                "NAME": "[ICPUSERHERE]",
+                "PASSWORD": "[ICPPASSHERE]"
+            }
+        }
+    }
+}

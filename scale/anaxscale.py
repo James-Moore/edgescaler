@@ -178,10 +178,27 @@ def start(ctx):
     environment = os.environ.copy()
     aicCommand = ctx.obj[aflag]
     count = ctx.obj[cflag]
+
     containers = dhelper.produceIndicesList(count)
-    logger.debug("Starting: " + str(containers), newline=True)
-    operations = chelper.generateHorizonContainerCommands(environment=environment, aicCommand=aicCommand, arg="start", containers=containers, logger=logger)
-    manager.run(runmode=mode_parallel, operations=operations)
+    runningContainers = dhelper.getRunningContainerList(count)
+    for running in runningContainers:
+        if running in containers:
+            containers.remove(running)
+
+    tries=0
+
+    while ( (len(containers) != 0) or (tries<2) ):
+        logger.debug("Starting: " + str(containers) + ", Attempt: " + str(tries), newline=True)
+        operations = chelper.generateHorizonContainerCommands(environment=environment, aicCommand=aicCommand, arg="start", containers=containers, logger=logger)
+        manager.run(runmode=mode_parallel, operations=operations)
+
+        runningContainers = dhelper.getRunningContainerList(count)
+        for running in runningContainers:
+            if running in containers:
+                containers.remove(running)
+
+        tries=tries+1
+
 
 @click.command()
 @click.pass_context
